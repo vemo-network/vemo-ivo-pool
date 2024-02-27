@@ -7,11 +7,13 @@ import "@openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/VestingPool.sol";
 import "./IVoucher.sol";
 
 // @title Moonsoon VestingPool
-contract MoonsoonVestingPool {
+contract MoonsoonVestingPool is IERC721Receiver {
     using SafeERC20 for IERC20;
 
     using MerkleProof for bytes32[];
@@ -188,7 +190,10 @@ contract MoonsoonVestingPool {
             _vestingSchedules,
             _fee
         );
-        _vemoVoucher.create(_token0, params);
+
+        (address voucher, uint256 id) = _vemoVoucher.create(_token0, params);
+
+        ERC721(voucher).transferFrom(address(this), msg.sender, id);
     }
 
     /**
@@ -273,4 +278,17 @@ contract MoonsoonVestingPool {
     }
 
     receive() external payable {}
+
+    /**
+   * @dev allow the project to receive an {AssetOwnership} token
+   * @return the solidity selector
+   */
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 }

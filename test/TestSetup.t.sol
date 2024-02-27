@@ -33,7 +33,7 @@ contract TestSetup is Test {
         mockToken1.mint(vm.addr(buyerPrivateKey), 1000000);
         mockToken1.mint(vm.addr(buyer2PrivateKey), 1000000);
 
-        voucher = new TestVoucher();
+        voucher = new TestVoucher("TestVoucher", "TVC");
         generateProof();
     }
 

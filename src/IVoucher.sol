@@ -28,5 +28,5 @@ interface IVoucher {
         VestingFee fee;
     }
 
-    function create(address tokenAddress, Vesting memory vesting) external returns (uint256);
+    function create(address tokenAddress, Vesting memory vesting) external returns (address, uint256);
 }

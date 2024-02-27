@@ -77,6 +77,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
         MoonsoonVestingPool(pool).buyWhitelist(100000, 100000, proof);
         vm.stopPrank();
 
+        assert(voucher.ownerOf(1) == vm.addr(buyerPrivateKey));
         assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 900000);
     }
 
