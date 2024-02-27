@@ -42,9 +42,6 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             schedules
         );
 
-        bytes32[] memory proof = new bytes32[](1);
-        proof[0] = keccak256(abi.encode(""));
-
         RoyaltyInfo memory royaltyInfo = RoyaltyInfo(
             vm.addr(deployerPrivateKey),
             100
@@ -64,7 +61,6 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             vestingMetadata,
             royaltyInfo,
             address(voucherImplementation),
-            proof,
             keccak256(""),
             block.timestamp + 60,
             bytes("0x")

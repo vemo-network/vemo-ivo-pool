@@ -87,7 +87,6 @@ contract MoonsoonVestingPoolFactory is EIP712 {
             params.startAt,
             voucherAddress,
             params.voucherImplementation,
-            params.proof,
             params.root,
             params.vestingMetadata,
             params.royaltyInfo

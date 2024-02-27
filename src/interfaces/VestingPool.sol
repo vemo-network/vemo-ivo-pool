@@ -28,7 +28,6 @@ pragma solidity ^0.8.13;
         VestingMetadata vestingMetadata;
         RoyaltyInfo royaltyInfo;
         address voucherImplementation;
-        bytes32[] proof;
         bytes32 root;
         uint256 startAt;
         bytes signature;

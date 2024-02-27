@@ -63,9 +63,6 @@ contract MoonsoonVestingPool {
     // Vesting Metadata
     RoyaltyInfo private _royaltyInfo;
 
-    // proof
-    bytes32[] private _proof;
-
     // root
     bytes32 private _root;
 
@@ -92,7 +89,6 @@ contract MoonsoonVestingPool {
         uint256 startAt;
         address voucherAddress;
         address voucherImplementationAddress;
-        bytes32[] proof;
         bytes32 root;
         VestingMetadata vestingMetadata;
         RoyaltyInfo royaltyInfo;
@@ -114,7 +110,6 @@ contract MoonsoonVestingPool {
         _voucherImplementationAddress = vestingPool.voucherImplementationAddress;
         _vemoVoucher = IVemoVoucher(_voucherAddress);
         _royaltyInfo = vestingPool.royaltyInfo;
-        _proof = vestingPool.proof;
         _root = vestingPool.root;
         _vestingMetadata.feeBps = vestingPool.vestingMetadata.feeBps;
         _vestingMetadata.tokenFeeAddress = vestingPool.vestingMetadata.tokenFeeAddress;
@@ -164,12 +159,14 @@ contract MoonsoonVestingPool {
      *          - The buyer should retrieve a voucher which contains locked token
      * @param amount the amount buyer want to buy
      * @param allocation the allocation to the buyer
-     * @param leaf the proof that buyer is allowed to buy that allocation, verified by merkle proof
+     * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
      */
-    function buyWhitelist(uint256 amount, uint256 allocation, bytes32 leaf) external payable {
+    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
         require(_poolType == POOL_TYPE_WHITELIST, "pool type is not whitelist, use buy instead");
-        require(_proof.verify(_root, leaf), "wrong proof of whitelist data");
+
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, allocation))));
+        require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         _buy(amount);
         _createVoucher(amount);
@@ -305,10 +302,10 @@ contract MoonsoonVestingPool {
      */
     function token1Amount(uint256 amount) public returns (uint256){
         if (_isNative(_token1)) {
-            uint256 _token1Amount = _price * (10 ** 18) * (amount / (10 ** ERC20(_token0).decimals()));
+            uint256 _token1Amount = _price * (10 ** 18) * amount / (10 ** ERC20(_token0).decimals());
             return _token1Amount;
         } else {
-            uint256 _token1Amount = _price * (10 ** ERC20(_token1).decimals()) * (amount / (10 ** ERC20(_token0).decimals()));
+            uint256 _token1Amount = _price * (10 ** ERC20(_token1).decimals()) * amount / (10 ** ERC20(_token0).decimals());
             return _token1Amount;
         }
     }
