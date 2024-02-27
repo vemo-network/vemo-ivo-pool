@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
+import "../IVoucher.sol";
+
 /**
  * CreateVestingPoolParams struct
  * @param token0                - The address of locked token inside the vault
@@ -9,7 +11,6 @@ pragma solidity ^0.8.13;
  * @param price                 - Price of the token0/token1
  * @param poolType              - 0: whitelist, 1: non-whitelist
  * @param flexibleAllocation    - true/false to indicate if the user can buy all
- * @param voucherData           - encoded data to create a new voucher address for this project
  * @param vestingMetadata       - metadata for vesting schedule & fee
  * @param voucherImplementation - implementation address of the voucher, used to create its token bound account
  * @param proof                 - Merkle Tree Proof of the whitelisted users
@@ -24,13 +25,10 @@ pragma solidity ^0.8.13;
         uint256 poolType;
         bool flexibleAllocation;
         uint256 maxAllocationPerWallet;
-        bytes voucherData;
-        VestingMetadata vestingMetadata;
-        RoyaltyInfo royaltyInfo;
-        address voucherImplementation;
+        IVoucher.VestingSchedule[] schedules;
+        IVoucher.VestingFee fee;
         bytes32 root;
         uint256 startAt;
-        bytes signature;
     }
 
 /**

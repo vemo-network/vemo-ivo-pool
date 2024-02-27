@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import {TestVoucherFactory} from "./helper/TestVoucherFactory.sol";
+import {TestVoucher} from "./helper/TestVoucher.sol";
 import "./helper/TestToken.sol";
 import "./helper/TestVoucherImplementation.sol";
 
@@ -12,8 +12,7 @@ contract TestSetup is Test {
     uint256 public buyerPrivateKey;
     uint256 public buyer2PrivateKey;
 
-    TestVoucherFactory public voucherFactory;
-    TestVoucherImplementation public voucherImplementation;
+    TestVoucher public voucher;
     TestToken public mockToken;
     TestToken public mockToken1;
 
@@ -33,9 +32,8 @@ contract TestSetup is Test {
         mockToken1 = new TestToken("test1", "TEST1");
         mockToken1.mint(vm.addr(buyerPrivateKey), 1000000);
         mockToken1.mint(vm.addr(buyer2PrivateKey), 1000000);
-        
-        voucherFactory = new TestVoucherFactory();
-        voucherImplementation = new TestVoucherImplementation();
+
+        voucher = new TestVoucher();
         generateProof();
     }
 

@@ -7,8 +7,8 @@ import "@openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import "vemo-data-registry/interfaces/IVemoVoucher.sol";
 import "./interfaces/VestingPool.sol";
+import "./IVoucher.sol";
 
 // @title Moonsoon VestingPool
 contract MoonsoonVestingPool {
@@ -28,11 +28,8 @@ contract MoonsoonVestingPool {
     // Address of the voucher which will be issued by this pool
     address private _voucherAddress;
 
-    // Address of the voucher implementation
-    address private _voucherImplementationAddress;
-
     // Vemo voucher
-    IVemoVoucher private _vemoVoucher;
+    IVoucher private _vemoVoucher;
 
     // Start time of the pool
     uint256 private _startTime;
@@ -58,24 +55,11 @@ contract MoonsoonVestingPool {
     uint256 private _maxAllocationPerWallet;
 
     // Vesting Metadata
-    VestingMetadata private _vestingMetadata;
-
-    // Vesting Metadata
-    RoyaltyInfo private _royaltyInfo;
+    IVoucher.VestingSchedule[] private _vestingSchedules;
+    IVoucher.VestingFee private _fee;
 
     // root
     bytes32 private _root;
-
-    uint256[] private _vestingUnlockTimestamps;
-    uint256[] private _vestingUnlockAmounts;
-
-    function vestingUnlockTimestamps() public view returns (uint256[] memory) {
-        return _vestingUnlockTimestamps;
-    }
-
-    function vestingUnlockAmounts() public view returns (uint256[] memory) {
-        return _vestingUnlockAmounts;
-    }
 
     // VestingPool initial params
     struct VestingPool {
@@ -88,11 +72,11 @@ contract MoonsoonVestingPool {
         uint256 maxAllocationPerWallet;
         uint256 startAt;
         address voucherAddress;
-        address voucherImplementationAddress;
         bytes32 root;
-        VestingMetadata vestingMetadata;
-        RoyaltyInfo royaltyInfo;
+        IVoucher.VestingSchedule[] schedules;
+        IVoucher.VestingFee fee;
     }
+
 
     constructor(VestingPool memory vestingPool, address operator) {
         _operator = operator;
@@ -107,24 +91,17 @@ contract MoonsoonVestingPool {
         _maxAllocationPerWallet = vestingPool.maxAllocationPerWallet;
         _startTime = vestingPool.startAt;
         _voucherAddress = vestingPool.voucherAddress;
-        _voucherImplementationAddress = vestingPool.voucherImplementationAddress;
-        _vemoVoucher = IVemoVoucher(_voucherAddress);
-        _royaltyInfo = vestingPool.royaltyInfo;
+        _vemoVoucher = IVoucher(_voucherAddress);
         _root = vestingPool.root;
-        _vestingMetadata.feeBps = vestingPool.vestingMetadata.feeBps;
-        _vestingMetadata.tokenFeeAddress = vestingPool.vestingMetadata.tokenFeeAddress;
-        _vestingMetadata.feeReceiver = vestingPool.vestingMetadata.feeReceiver;
-        for (uint8 i = 0; i < vestingPool.vestingMetadata.vestingSchedule.length; i++) {
-            VestingSchedule memory vestingSchedule = vestingPool.vestingMetadata.vestingSchedule[i];
+        _fee = vestingPool.fee;
 
-            _vestingMetadata.vestingSchedule.push(VestingSchedule(
-                vestingSchedule.option,
-                vestingSchedule.ratio,
-                vestingSchedule.startTime,
-                vestingSchedule.period,
-                vestingSchedule.duration
-            ));
+
+        for (uint8 i = 0; i < vestingPool.schedules.length; i++) {
+            IVoucher.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
+
+            _vestingSchedules.push(vestingSchedule);
         }
+
     }
 
     /**
@@ -206,93 +183,12 @@ contract MoonsoonVestingPool {
      * @param amount the amount buyer want to buy
      */
     function _createVoucher(uint256 amount) private {
-        calculateVestingData(amount);
-        IVemoVoucher.Balance memory balance = IVemoVoucher.Balance(
-            _token0,
-            amount
+        IVoucher.Vesting memory params = IVoucher.Vesting(
+            amount,
+            _vestingSchedules,
+            _fee
         );
-        IVemoVoucher.VestingSchedule memory schedule = IVemoVoucher.VestingSchedule(
-            _vestingUnlockTimestamps,
-            _vestingUnlockAmounts
-        );
-        IVemoVoucher.RedemptionFee memory redemptionFee = IVemoVoucher.RedemptionFee(
-            _vestingMetadata.feeReceiver,
-            _vestingMetadata.tokenFeeAddress,
-            _vestingMetadata.feeBps
-        );
-        IVemoVoucher.RoyaltyInfo memory royaltyInfo = IVemoVoucher.RoyaltyInfo(
-            _royaltyInfo.royaltyReceiver,
-            _royaltyInfo.royaltyRate
-        );
-
-        IVemoVoucher.CreateVoucherParams memory params = IVemoVoucher.CreateVoucherParams(
-            msg.sender,
-            balance,
-            schedule,
-            redemptionFee,
-            royaltyInfo
-        );
-        _vemoVoucher.create(params);
-
-        delete _vestingUnlockTimestamps;
-        delete _vestingUnlockAmounts;
-    }
-
-    /**
-     * @notice internal function to calculate vesting schedule
-     *          - support calculate `_vestingUnlockTimestamps` & `_vestingUnlockAmounts`
-     *            for the input amount & vesting schedule of the pool
-     * @param amount an uint256 amount to indicates the vesting voucher's total amount
-     */
-    function calculateVestingData(uint256 amount) public {
-        uint256 totalRatio = 0;
-        uint256 totalRatioAmount = 0;
-        for (uint8 i = 0; i < _vestingMetadata.vestingSchedule.length; i++) {
-            VestingSchedule memory vestingSchedule = _vestingMetadata.vestingSchedule[i];
-            totalRatio += vestingSchedule.ratio;
-
-            if (vestingSchedule.option == 0) {
-                _vestingUnlockTimestamps.push(vestingSchedule.startTime);
-                if (i == _vestingMetadata.vestingSchedule.length - 1) {
-                    _vestingUnlockAmounts.push(amount - totalRatioAmount);
-                    totalRatioAmount = amount;
-                } else {
-                    _vestingUnlockAmounts.push(amount * vestingSchedule.ratio / 10000);
-                    totalRatioAmount += amount * vestingSchedule.ratio / 10000;
-                }
-            } else {
-                uint256 count = 0;
-                uint256 start = vestingSchedule.startTime;
-                uint256 ratioAmount = amount * vestingSchedule.ratio / 10000;
-                if (i == _vestingMetadata.vestingSchedule.length - 1) {
-                    ratioAmount = amount - totalRatioAmount;
-                }
-
-                while (start <= vestingSchedule.startTime + vestingSchedule.period) {
-                    _vestingUnlockTimestamps.push(start);
-                    start += vestingSchedule.duration;
-                    count++;
-                }
-
-                uint256 totalAmount = 0;
-                for (uint8 j = 0; j < count; j++) {
-                    if (j < count - 1) {
-                        _vestingUnlockAmounts.push(ratioAmount / count);
-                        totalAmount += ratioAmount / count;
-                    } else {
-                        require(totalAmount < ratioAmount, "wrong linear vesting data");
-                        _vestingUnlockAmounts.push(ratioAmount - totalAmount);
-                    }
-                }
-
-                require(_vestingUnlockAmounts.length == _vestingUnlockTimestamps.length, "_vestingUnlockAmounts and _vestingUnlockTimestamps must have the same length");
-
-                totalRatioAmount += ratioAmount;
-            }
-        }
-
-        require(totalRatio == 10000, "total unlock ratio greater/less than 100%");
-        require(totalRatioAmount == amount, "total amount bought is wrong calculated");
+        _vemoVoucher.create(_token0, params);
     }
 
     /**

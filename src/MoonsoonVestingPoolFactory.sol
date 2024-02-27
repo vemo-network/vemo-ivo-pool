@@ -24,7 +24,7 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     address private _operator;
 
     // Vemo Voucher Factory
-    address private _voucherFactory;
+    address private _voucher;
 
     constructor(string memory name_, string memory version_) EIP712(name_, version_) {
         _deployer = msg.sender;
@@ -44,9 +44,9 @@ contract MoonsoonVestingPoolFactory is EIP712 {
      * @dev set the voucher factory address
      * @notice Only allow 1 voucher factory at a time
      */
-    function setVoucherFactoryAddress(address voucherFactoryAddress) public {
+    function setVoucherAddress(address voucherAddress) public {
         require(msg.sender == _deployer || msg.sender == _operator, "Only deployer/operator can set operator address");
-        _voucherFactory = voucherFactoryAddress;
+        _voucher = voucherAddress;
     }
 
     /**
@@ -66,14 +66,14 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
 
-        address voucherAddress;
-        // Create the voucher address for the pool
-        {
-            // call to external contract
-            (bool success, bytes memory result) = _voucherFactory.call(params.voucherData);
-            require(success, 'Call failed');
-            voucherAddress = abi.decode(result, (address));
-        }
+//        address voucherAddress;
+//        // Create the voucher address for the pool
+//        {
+//            // call to external contract
+//            (bool success, bytes memory result) = _voucherFactory.call(params.voucherData);
+//            require(success, 'Call failed');
+//            voucherAddress = abi.decode(result, (address));
+//        }
 
         // Create a new vesting pool
         MoonsoonVestingPool.VestingPool memory _pool = MoonsoonVestingPool.VestingPool(
@@ -85,11 +85,10 @@ contract MoonsoonVestingPoolFactory is EIP712 {
             params.flexibleAllocation,
             params.maxAllocationPerWallet,
             params.startAt,
-            voucherAddress,
-            params.voucherImplementation,
+            _voucher,
             params.root,
-            params.vestingMetadata,
-            params.royaltyInfo
+            params.schedules,
+            params.fee
         );
         MoonsoonVestingPool vestingPool = new MoonsoonVestingPool(_pool, msg.sender);
 
