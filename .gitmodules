@@ -4,9 +4,3 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = git@github.com:OpenZeppelin/openzeppelin-contracts.git
-[submodule "lib/vemo-shared-lib"]
-	path = lib/vemo-shared-lib
-	url = git@github.com:digi-money/vemo-shared-lib.git
-[submodule "lib/vemo-data-registry"]
-	path = lib/vemo-data-registry
-	url = git@github.com:digi-money/vemo-data-registry.git
