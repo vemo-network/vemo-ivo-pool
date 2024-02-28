@@ -26,6 +26,9 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     // Vemo Voucher Factory
     address private _voucher;
 
+    // Mapping from pool hash to pool address
+    mapping(bytes32 => address) private _poolByHash;
+
     constructor(string memory name_, string memory version_) EIP712(name_, version_) {
         _deployer = msg.sender;
         _operator = _deployer;
@@ -50,6 +53,14 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     }
 
     /**
+   * @dev return the pools by their hashes
+   * @param hash - bytes32 hash of (poolId,token0,token1)
+   */
+    function getPoolByHash(bytes32 hash) external view returns (address) {
+        return _poolByHash[hash];
+    }
+
+    /**
      * @dev publish a vesting pool
      * @param params - see {CreateVestingPoolParams}
      * @notice The function first validate the signature of the whole params, which should be signed
@@ -66,14 +77,8 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
 
-//        address voucherAddress;
-//        // Create the voucher address for the pool
-//        {
-//            // call to external contract
-//            (bool success, bytes memory result) = _voucherFactory.call(params.voucherData);
-//            require(success, 'Call failed');
-//            voucherAddress = abi.decode(result, (address));
-//        }
+        bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.token0, params.token1));
+        require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
 
         // Create a new vesting pool
         MoonsoonVestingPool.VestingPool memory _pool = MoonsoonVestingPool.VestingPool(
@@ -99,6 +104,8 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         IERC20(params.token0).safeTransfer(
             address(vestingPool), params.tokenAmount
         );
+
+        _poolByHash[poolHash] = address(vestingPool);
 
         return payable(address(vestingPool));
     }

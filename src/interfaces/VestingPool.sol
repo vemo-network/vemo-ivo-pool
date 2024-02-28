@@ -18,6 +18,8 @@ import "../IVoucher.sol";
  * @param signature             - We may not want this vault to be used not though moonsoon console
 */
     struct CreateVestingPoolParams {
+        bytes32 hashes;
+        uint256 poolId;
         address token0;
         uint256 tokenAmount;
         address token1;

@@ -45,7 +45,10 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             100000
         );
 
+        bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(mockToken), address(mockToken1)));
         params = CreateVestingPoolParams(
+            hash,
+            1,
             address(mockToken),
             100000000,
             address(mockToken1),
@@ -71,7 +74,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         mockToken1.approve(pool, UINT256_MAX);
         MoonsoonVestingPool(pool).buy(1000000);
         vm.stopPrank();
-        
+
         assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 0);
     }
 }
