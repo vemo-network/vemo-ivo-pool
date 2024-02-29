@@ -21,6 +21,16 @@ contract MoonsoonVestingPool is IERC721Receiver {
     Contract metadata
     ------------------------------------------------------------------------------------------------------*/
 
+    // VestingPoolCreated Event
+    event TokenBought(
+        address indexed buyer,
+        address indexed pool,
+        address indexed token0,
+        address token1,
+        uint256 amount,
+        uint256 price
+    );
+
     // Operator address
     address private _operator;
 
@@ -142,6 +152,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
     function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
         require(_poolType == POOL_TYPE_WHITELIST, "pool type is not whitelist, use buy instead");
+        require(msg.value == (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
 
         if (!_flexibleAllocation) {
             require(amount == allocation, "must buy all allocation because _flexibleAllocation == false");
@@ -152,6 +163,15 @@ contract MoonsoonVestingPool is IERC721Receiver {
 
         _buy(amount);
         _createVoucher(amount);
+
+        emit TokenBought(
+            msg.sender,
+            address(this),
+            _token0,
+            _token1,
+            amount,
+            _price
+        );
     }
 
     /**
@@ -162,6 +182,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
     function buy(uint256 amount) external payable {
         require(_boughtAmount[msg.sender] + amount <= _maxAllocationPerWallet, "bought amount exceeds max allocation.");
         require(_poolType == POOL_TYPE_NON_WHITELIST, "pool type is not non-whitelist, use buyWhitelist instead");
+        require(msg.value == (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
 
         if (!_flexibleAllocation) {
             require(amount == _maxAllocationPerWallet, "must buy all allocation because _flexibleAllocation == false");
@@ -169,6 +190,17 @@ contract MoonsoonVestingPool is IERC721Receiver {
 
         _buy(amount);
         _createVoucher(amount);
+
+        emit TokenBought(
+            msg.sender,
+            address(this),
+            _token0,
+            _token1,
+            amount,
+            _price
+        );
+
+        uint256 balance = _getBalance(_token1, address(this));
     }
 
     /**
