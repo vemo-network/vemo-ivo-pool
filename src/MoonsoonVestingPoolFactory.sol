@@ -87,6 +87,7 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     */
     function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
+        require(params.tokenAmount > params.maxAllocationPerWallet, 'tokenAmount should be greater than maxAllocationPerWallet');
 
         bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.token0, params.token1));
         require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
