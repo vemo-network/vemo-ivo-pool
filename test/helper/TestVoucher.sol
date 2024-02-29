@@ -2,9 +2,12 @@
 pragma solidity ^0.8.13;
 
 import "../../src/IVoucher.sol";
+import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721} from "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 
 contract TestVoucher is IVoucher, ERC721 {
+    using SafeERC20 for IERC20;
     uint8 private lock = 0;
     modifier noReentrance() {
         require(lock == 0, "Contract is locking");
@@ -22,6 +25,11 @@ contract TestVoucher is IVoucher, ERC721 {
         address tokenAddress, IVoucher.Vesting memory vesting
     ) public noReentrance returns (address, uint256) {
         _safeMint(msg.sender, 1);
+
+        IERC20(tokenAddress).safeTransferFrom(
+            msg.sender, address(this), vesting.balance
+        );
+
         return (address(this), 1);
     }
 }

@@ -54,7 +54,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             address(mockToken1),
             1,
             1,
-            false,
+            true,
             2000000,
             schedules,
             fee,

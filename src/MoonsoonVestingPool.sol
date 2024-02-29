@@ -125,13 +125,12 @@ contract MoonsoonVestingPool is IERC721Receiver {
         _operator = _operator_address;
     }
 
-    bytes32 public constant REMITTANCE_HASH = keccak256(
-        "Remittance(string credentialType,string credential,address sender,uint256 amount,address token,uint256 expiredAt,uint256 salt,bytes signature)"
-    );
-
-    bytes32 public constant CLAIM_REQUEST_HASH = keccak256(
-        'ClaimRequest(bytes32[] remittances,address receiver,uint256 expiredAt)'
-    );
+    /**
+     * @dev get voucher address
+     */
+    function getVoucherAddress() public view returns (address) {
+        return _voucherAddress;
+    }
 
     /**
      * @notice function to buy in a whitelist pool
@@ -143,6 +142,10 @@ contract MoonsoonVestingPool is IERC721Receiver {
     function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
         require(_poolType == POOL_TYPE_WHITELIST, "pool type is not whitelist, use buy instead");
+
+        if (!_flexibleAllocation) {
+            require(amount == allocation, "must buy all allocation because _flexibleAllocation == false");
+        }
 
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, allocation))));
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
@@ -159,6 +162,10 @@ contract MoonsoonVestingPool is IERC721Receiver {
     function buy(uint256 amount) external payable {
         require(_boughtAmount[msg.sender] + amount <= _maxAllocationPerWallet, "bought amount exceeds max allocation.");
         require(_poolType == POOL_TYPE_NON_WHITELIST, "pool type is not non-whitelist, use buyWhitelist instead");
+
+        if (!_flexibleAllocation) {
+            require(amount == _maxAllocationPerWallet, "must buy all allocation because _flexibleAllocation == false");
+        }
 
         _buy(amount);
         _createVoucher(amount);
@@ -191,6 +198,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
             _fee
         );
 
+        IERC20(_token0).approve(address(_vemoVoucher), amount);
         (address voucher, uint256 id) = _vemoVoucher.create(_token0, params);
 
         ERC721(voucher).transferFrom(address(this), msg.sender, id);
@@ -260,7 +268,6 @@ contract MoonsoonVestingPool is IERC721Receiver {
                     IERC20(token).safeTransferFrom(
                         from, to, amount
                     );
-
                 }
             }
         }

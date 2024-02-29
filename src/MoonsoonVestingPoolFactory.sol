@@ -29,6 +29,17 @@ contract MoonsoonVestingPoolFactory is EIP712 {
     // Mapping from pool hash to pool address
     mapping(bytes32 => address) private _poolByHash;
 
+    // VestingPoolCreated Event
+    event VestingPoolCreated(
+        address owner,
+        address indexed pool,
+        uint256 poolId,
+        bytes32 poolHash,
+        address indexed token0,
+        address indexed token1,
+        uint256 tokenAmount
+    );
+
     constructor(string memory name_, string memory version_) EIP712(name_, version_) {
         _deployer = msg.sender;
         _operator = _deployer;
@@ -106,6 +117,16 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         );
 
         _poolByHash[poolHash] = address(vestingPool);
+
+        emit VestingPoolCreated(
+            msg.sender,
+            address(vestingPool),
+            params.poolId,
+            poolHash,
+            params.token0,
+            params.token1,
+            params.tokenAmount
+        );
 
         return payable(address(vestingPool));
     }

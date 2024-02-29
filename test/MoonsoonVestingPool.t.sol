@@ -46,6 +46,8 @@ contract MoonsoonVestingPoolTest is TestSetup {
         );
 
         bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(mockToken), address(mockToken1)));
+//        bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(0x21b2E6c9805871743aeAD44c65bAb6cb9F0f1c60), address(0x38BE5E3f75C7D5F67558FC47c75c010783a28Cc9)));
+        console.logBytes32(hash);
         params = CreateVestingPoolParams(
             hash,
             1,
@@ -54,7 +56,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
             address(mockToken1),
             1,
             0,
-            false,
+            true,
             2000000,
             schedules,
             fee,
