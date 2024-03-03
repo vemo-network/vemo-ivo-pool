@@ -58,6 +58,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
             0,
             true,
             2000000,
+            500,
             schedules,
             fee,
             root,

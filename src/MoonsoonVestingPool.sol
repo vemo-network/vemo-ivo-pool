@@ -66,6 +66,9 @@ contract MoonsoonVestingPool is IERC721Receiver {
     // Max allocation per wallet
     uint256 private _maxAllocationPerWallet;
 
+    // Royalty rate for voucher created from this vesting pool
+    uint96 private _royaltyRate;
+
     // Vesting Metadata
     IVoucher.VestingSchedule[] private _vestingSchedules;
     IVoucher.VestingFee private _fee;
@@ -79,9 +82,10 @@ contract MoonsoonVestingPool is IERC721Receiver {
         uint256 tokenAmount;
         address token1;
         uint256 price;
-        uint256 poolType;
+        uint8 poolType;
         bool flexibleAllocation;
         uint256 maxAllocationPerWallet;
+        uint96 royaltyRate;
         uint256 startAt;
         address voucherAddress;
         bytes32 root;
@@ -94,6 +98,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
         _operator = operator;
 
         require(block.timestamp < vestingPool.startAt, "start time is in the pass");
+        require(vestingPool.royaltyRate <= 10000, "royalty rate is too high");
 
         _token0 = vestingPool.token0;
         _token1 = vestingPool.token1;
@@ -101,12 +106,12 @@ contract MoonsoonVestingPool is IERC721Receiver {
         _poolType = vestingPool.poolType;
         _flexibleAllocation = vestingPool.flexibleAllocation;
         _maxAllocationPerWallet = vestingPool.maxAllocationPerWallet;
+        _royaltyRate = vestingPool.royaltyRate;
         _startTime = vestingPool.startAt;
         _voucherAddress = vestingPool.voucherAddress;
         _vemoVoucher = IVoucher(_voucherAddress);
         _root = vestingPool.root;
         _fee = vestingPool.fee;
-
 
         for (uint8 i = 0; i < vestingPool.schedules.length; i++) {
             IVoucher.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
@@ -230,10 +235,16 @@ contract MoonsoonVestingPool is IERC721Receiver {
             _fee
         );
 
-        IERC20(_token0).approve(address(_vemoVoucher), amount);
-        (address voucher, uint256 id) = _vemoVoucher.create(_token0, params);
+        IVoucher.BatchVesting memory batchVesting = IVoucher.BatchVesting(
+            params,
+            1
+        );
 
-        ERC721(voucher).transferFrom(address(this), msg.sender, id);
+        IERC20(_token0).approve(address(_vemoVoucher), amount);
+        (address voucher, uint256 startId, uint256 endId) = _vemoVoucher.createBatch(_token0, batchVesting, _royaltyRate);
+
+        for (uint256 i = startId; i <= endId; i++)
+            ERC721(voucher).transferFrom(address(this), msg.sender, i);
     }
 
     /**

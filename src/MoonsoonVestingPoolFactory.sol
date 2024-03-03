@@ -101,6 +101,7 @@ contract MoonsoonVestingPoolFactory is EIP712 {
             params.poolType,
             params.flexibleAllocation,
             params.maxAllocationPerWallet,
+            params.royaltyRate,
             params.startAt,
             _voucher,
             params.root,

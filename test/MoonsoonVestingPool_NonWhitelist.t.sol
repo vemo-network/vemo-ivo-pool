@@ -56,6 +56,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             1,
             true,
             2000000,
+            500,
             schedules,
             fee,
             keccak256(""),
