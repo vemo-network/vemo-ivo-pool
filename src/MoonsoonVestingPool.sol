@@ -148,8 +148,72 @@ contract MoonsoonVestingPool is IERC721Receiver {
     /**
      * @dev get voucher address
      */
-    function getVoucherAddress() public view returns (address) {
+    function getVoucherAddress() external view returns (address) {
         return _voucherAddress;
+    }
+
+    /**
+     * @dev get start time of this vesting pool
+     */
+    function startTime() external view returns (uint256) {
+        return _startTime;
+    }
+
+    /**
+     * @dev get end time of this vesting pool
+     */
+    function endTime() external view returns (uint256) {
+        return _endTime;
+    }
+
+    /**
+     * @notice public function to return the amount bought by a buyer
+     * @param buyer address of the buyer
+     */
+    function boughtAmount(address buyer) external view returns (uint256){
+        return _boughtAmount[buyer];
+    }
+
+    /**
+     * @dev get max allocation per wallet
+     */
+    function maxAllocationPerWallet() external view returns (uint256) {
+        return _maxAllocationPerWallet;
+    }
+
+    /**
+     * @dev get pool type
+     */
+    function poolType() external view returns (uint256) {
+        return _poolType;
+    }
+
+    /**
+     * @dev get royalty rate
+     */
+    function royaltyRate() external view returns (uint96) {
+        return _royaltyRate;
+    }
+
+    /**
+     * @dev get vesting schedule
+     */
+    function vestingSchedules() external view returns (IVoucher.VestingSchedule[] memory) {
+        return _vestingSchedules;
+    }
+
+    /**
+     * @dev get vesting fee
+     */
+    function vestingFee() external view returns (IVoucher.VestingFee memory) {
+        return _fee;
+    }
+
+    /**
+     * @dev is flexible allocation pool
+     */
+    function isFlexibleAllocationPool() external view returns (bool) {
+        return _flexibleAllocation;
     }
 
     /**
@@ -184,10 +248,6 @@ contract MoonsoonVestingPool is IERC721Receiver {
             amount,
             _token1Amount
         );
-    }
-
-    function endTime() public view returns (uint256) {
-        return _endTime;
     }
 
     /**
