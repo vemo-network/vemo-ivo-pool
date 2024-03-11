@@ -10,20 +10,20 @@ import "../IVoucher.sol";
  * @param token1                - The expected token used for buying, 0x0 means native token
  * @param price                 - Price of the token0/token1
  * @param poolType              - 0: whitelist, 1: non-whitelist
- * @param flexibleAllocation    - true/false to indicate if the user can buy all
+ * @param flexibleAllocation    - true/false to indicate if the user can buy a portion of allocation
  * @param vestingMetadata       - metadata for vesting schedule & fee
  * @param voucherImplementation - implementation address of the voucher, used to create its token bound account
  * @param proof                 - Merkle Tree Proof of the whitelisted users
- * @param startAt               - Start time of the vault
- * @param signature             - We may not want this vault to be used not though moonsoon console
+ * @param startAt               - Start time of the vesting pool
+ * @param endAt                 - End time of the vesting pool
 */
     struct CreateVestingPoolParams {
         bytes32 hashes;
         uint256 poolId;
         address token0;
-        uint256 tokenAmount;
+        uint256 token0Amount;
         address token1;
-        uint256 price;
+        uint256 expectedToken1Amount;
         uint8 poolType;
         bool flexibleAllocation;
         uint256 maxAllocationPerWallet;
@@ -32,6 +32,7 @@ import "../IVoucher.sol";
         IVoucher.VestingFee fee;
         bytes32 root;
         uint256 startAt;
+        uint256 endAt;
     }
 
 /**

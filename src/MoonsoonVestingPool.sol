@@ -27,8 +27,8 @@ contract MoonsoonVestingPool is IERC721Receiver {
         address indexed pool,
         address indexed token0,
         address token1,
-        uint256 amount,
-        uint256 price
+        uint256 token0amount,
+        uint256 token1Amount
     );
 
     // Operator address
@@ -43,17 +43,19 @@ contract MoonsoonVestingPool is IERC721Receiver {
     // Vemo voucher
     IVoucher private _vemoVoucher;
 
-    // Start time of the pool
+    // Start/end time of the pool
     uint256 private _startTime;
+    uint256 private _endTime;
 
     // Address of the token locked inside this pool
     address private _token0;
+    uint256 private _token0Amount;
 
     // Address of the token used to buy from this vesting pool
     address private _token1;
 
-    // price of the token0 to token1
-    uint256 private _price;
+    // expect total amount of token1
+    uint256 private _expectedToken1Amount;
 
     // Type of this vesting pool
     uint256 private _poolType;
@@ -79,14 +81,15 @@ contract MoonsoonVestingPool is IERC721Receiver {
     // VestingPool initial params
     struct VestingPool {
         address token0;
-        uint256 tokenAmount;
+        uint256 token0Amount;
         address token1;
-        uint256 price;
+        uint256 expectedToken1Amount;
         uint8 poolType;
         bool flexibleAllocation;
         uint256 maxAllocationPerWallet;
         uint96 royaltyRate;
         uint256 startAt;
+        uint256 endAt;
         address voucherAddress;
         bytes32 root;
         IVoucher.VestingSchedule[] schedules;
@@ -101,13 +104,15 @@ contract MoonsoonVestingPool is IERC721Receiver {
         require(vestingPool.royaltyRate <= 10000, "royalty rate is too high");
 
         _token0 = vestingPool.token0;
+        _token0Amount = vestingPool.token0Amount;
         _token1 = vestingPool.token1;
-        _price = vestingPool.price;
+        _expectedToken1Amount = vestingPool.expectedToken1Amount;
         _poolType = vestingPool.poolType;
         _flexibleAllocation = vestingPool.flexibleAllocation;
         _maxAllocationPerWallet = vestingPool.maxAllocationPerWallet;
         _royaltyRate = vestingPool.royaltyRate;
         _startTime = vestingPool.startAt;
+        _endTime = vestingPool.endAt;
         _voucherAddress = vestingPool.voucherAddress;
         _vemoVoucher = IVoucher(_voucherAddress);
         _root = vestingPool.root;
@@ -155,9 +160,11 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
      */
     function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
+        require(block.timestamp <= _endTime, "the vesting pool has ended");
+        require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
         require(_poolType == POOL_TYPE_WHITELIST, "pool type is not whitelist, use buy instead");
-        require(msg.value == (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
+        require(msg.value >= (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
 
         if (!_flexibleAllocation) {
             require(amount == allocation, "must buy all allocation because _flexibleAllocation == false");
@@ -166,7 +173,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, allocation))));
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
-        _buy(amount);
+        uint256 _token1Amount = _buy(amount);
         _createVoucher(amount);
 
         emit TokenBought(
@@ -175,8 +182,12 @@ contract MoonsoonVestingPool is IERC721Receiver {
             _token0,
             _token1,
             amount,
-            _price
+            _token1Amount
         );
+    }
+
+    function endTime() public view returns (uint256) {
+        return _endTime;
     }
 
     /**
@@ -185,15 +196,17 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      */
     function buy(uint256 amount) external payable {
+        require(block.timestamp <= _endTime, "the vesting pool has ended");
+        require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= _maxAllocationPerWallet, "bought amount exceeds max allocation.");
         require(_poolType == POOL_TYPE_NON_WHITELIST, "pool type is not non-whitelist, use buyWhitelist instead");
-        require(msg.value == (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
+        require(msg.value >= (_isNative(_token1) ? token1Amount(amount) : 0), 'Invalid msg.value');
 
         if (!_flexibleAllocation) {
             require(amount == _maxAllocationPerWallet, "must buy all allocation because _flexibleAllocation == false");
         }
 
-        _buy(amount);
+        uint256 _token1Amount = _buy(amount);
         _createVoucher(amount);
 
         emit TokenBought(
@@ -202,7 +215,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
             _token0,
             _token1,
             amount,
-            _price
+            _token1Amount
         );
 
         uint256 balance = _getBalance(_token1, address(this));
@@ -214,12 +227,14 @@ contract MoonsoonVestingPool is IERC721Receiver {
      *          - increase the allocation info of the buyer
      * @param amount the amount buyer want to buy
      */
-    function _buy(uint256 amount) internal {
+    function _buy(uint256 amount) internal returns (uint256){
         uint256 _token1Amount = token1Amount(amount);
 
         _doTransferERC20(_token1, msg.sender, address(this), _token1Amount);
 
         _boughtAmount[msg.sender] = _boughtAmount[msg.sender] + amount;
+
+        return _token1Amount;
     }
 
     /**
@@ -253,13 +268,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param amount an uint256 amount of `token0` that buyer wants to buy
      */
     function token1Amount(uint256 amount) public returns (uint256){
-        if (_isNative(_token1)) {
-            uint256 _token1Amount = _price * (10 ** 18) * amount / (10 ** ERC20(_token0).decimals());
-            return _token1Amount;
-        } else {
-            uint256 _token1Amount = _price * (10 ** ERC20(_token1).decimals()) * amount / (10 ** ERC20(_token0).decimals());
-            return _token1Amount;
-        }
+        return _expectedToken1Amount * amount / _token0Amount;
     }
 
     /**

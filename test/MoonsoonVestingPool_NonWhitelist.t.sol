@@ -52,7 +52,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             address(mockToken),
             100000000,
             address(mockToken1),
-            1,
+            100000000,
             1,
             true,
             2000000,
@@ -60,7 +60,8 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             schedules,
             fee,
             keccak256(""),
-            block.timestamp + 60
+            block.timestamp + 60,
+            block.timestamp + 120
         );
     }
 
@@ -70,6 +71,8 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
+
+        skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
@@ -82,12 +85,15 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
     function test_BuySuccessfullyWithETH() public {
         CreateVestingPoolParams memory params = generateParams();
         params.token1 = address(0);
+        params.expectedToken1Amount = 100000000000;
 
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000);
+
+        skip(60);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
@@ -95,7 +101,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
 
-        assert(pool.balance == 1000000000000000000);
+        assert(pool.balance == 1000000000);
     }
 
     function testFailed_BuyFailedWithETH() public {
@@ -108,10 +114,98 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         assert(pool.balance == 0);
         assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
+        skip(60);
+
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         MoonsoonVestingPool(pool).buy{value: 232}(1000000);
         vm.stopPrank();
     }
+
+    function testFailed_PoolHasNotStarted() public {
+        CreateVestingPoolParams memory params = generateParams();
+        params.token1 = address(0);
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+        assert(pool.balance == 0);
+        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+
+        skip(40);
+
+        vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
+        vm.stopPrank();
+    }
+
+    function testFailed_PoolHasEnded() public {
+        CreateVestingPoolParams memory params = generateParams();
+        params.token1 = address(0);
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+        assert(pool.balance == 0);
+        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+
+        skip(125);
+
+        vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
+        vm.stopPrank();
+    }
+
+    function testFailed_BuyMoreThanAllocationInFirstTx() public {
+        CreateVestingPoolParams memory params = generateParams();
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(70);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buy(3000000);
+        vm.stopPrank();
+    }
+
+    function testFailed_BuyMoreThanAllocationIn2ndTx() public {
+        CreateVestingPoolParams memory params = generateParams();
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(70);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buy(1000000);
+        MoonsoonVestingPool(pool).buy(1100000);
+        vm.stopPrank();
+    }
+
+    function testFailed_BuyLessThanAllocationInNonFlexiblePool() public {
+        CreateVestingPoolParams memory params = generateParams();
+        params.flexibleAllocation = false;
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(70);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buy(1000000);
+        vm.stopPrank();
+    }
+
 }

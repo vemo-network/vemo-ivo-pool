@@ -37,7 +37,8 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         bytes32 poolHash,
         address indexed token0,
         address indexed token1,
-        uint256 tokenAmount
+        uint256 token0Amount,
+        uint256 expectedtoken1Amount
     );
 
     constructor(string memory name_, string memory version_) EIP712(name_, version_) {
@@ -80,14 +81,14 @@ contract MoonsoonVestingPoolFactory is EIP712 {
      * - A new {Voucher} is deployed by sending `voucherData` params to {VoucherFactory} address
      * - {MoonsoonVestingPool.VestingPool} from `params` will be sent to {MoonsoonVestingPool}
      *   to create a new MoonsoonVestingPool
-     * - The Factory will take the `tokenAmount` of `token0` from sender, and send them to the new
+     * - The Factory will take the `token0Amount` of `token0` from sender, and send them to the new
      *   created vesting pool
      *
      * @return vestingPool - address of the deployed vesting pool
     */
     function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
-        require(params.tokenAmount > params.maxAllocationPerWallet, 'tokenAmount should be greater than maxAllocationPerWallet');
+        require(params.token0Amount > params.maxAllocationPerWallet, 'token0Amount should be greater than maxAllocationPerWallet');
 
         bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.token0, params.token1));
         require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
@@ -95,14 +96,15 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         // Create a new vesting pool
         MoonsoonVestingPool.VestingPool memory _pool = MoonsoonVestingPool.VestingPool(
             params.token0,
-            params.tokenAmount,
+            params.token0Amount,
             params.token1,
-            params.price,
+            params.expectedToken1Amount,
             params.poolType,
             params.flexibleAllocation,
             params.maxAllocationPerWallet,
             params.royaltyRate,
             params.startAt,
+            params.endAt,
             _voucher,
             params.root,
             params.schedules,
@@ -111,11 +113,11 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         MoonsoonVestingPool vestingPool = new MoonsoonVestingPool(_pool, msg.sender);
 
         IERC20(params.token0).safeTransferFrom(
-            msg.sender, address(this), params.tokenAmount
+            msg.sender, address(this), params.token0Amount
         );
 
         IERC20(params.token0).safeTransfer(
-            address(vestingPool), params.tokenAmount
+            address(vestingPool), params.token0Amount
         );
 
         _poolByHash[poolHash] = address(vestingPool);
@@ -127,7 +129,8 @@ contract MoonsoonVestingPoolFactory is EIP712 {
             poolHash,
             params.token0,
             params.token1,
-            params.tokenAmount
+            params.token0Amount,
+            params.expectedToken1Amount
         );
 
         return payable(address(vestingPool));

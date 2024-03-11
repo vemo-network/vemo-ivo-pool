@@ -46,15 +46,13 @@ contract MoonsoonVestingPoolTest is TestSetup {
         );
 
         bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(mockToken), address(mockToken1)));
-//        bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(0x21b2E6c9805871743aeAD44c65bAb6cb9F0f1c60), address(0x38BE5E3f75C7D5F67558FC47c75c010783a28Cc9)));
-        console.logBytes32(hash);
         params = CreateVestingPoolParams(
             hash,
             1,
             address(mockToken),
             100000000,
             address(mockToken1),
-            1,
+            100000000,
             0,
             true,
             2000000,
@@ -62,7 +60,8 @@ contract MoonsoonVestingPoolTest is TestSetup {
             schedules,
             fee,
             root,
-            block.timestamp + 60
+            block.timestamp + 60,
+            block.timestamp + 120
         );
     }
 
@@ -73,10 +72,14 @@ contract MoonsoonVestingPoolTest is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
 
+        skip(60);
+
         bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
         bytes32 p = stringToBytes32(source);
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = p;
+
+        assert(MoonsoonVestingPool(pool).token1Amount(100000) == 100000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
@@ -93,6 +96,29 @@ contract MoonsoonVestingPoolTest is TestSetup {
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
+
+        skip(60);
+
+        bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
+        bytes32 p = stringToBytes32(source);
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = p;
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buyWhitelist(150000, 100000, proof);
+        vm.stopPrank();
+    }
+
+    function testFailed_PoolHasNotStarted() public {
+        CreateVestingPoolParams memory params = generateParams();
+        params.token1 = address(0);
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(60);
 
         bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
         bytes32 p = stringToBytes32(source);
