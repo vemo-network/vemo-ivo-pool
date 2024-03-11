@@ -5,17 +5,21 @@ import "../IVoucher.sol";
 
 /**
  * CreateVestingPoolParams struct
- * @param token0                - The address of locked token inside the vault
- * @param tokenAmount           - Locked Amount
- * @param token1                - The expected token used for buying, 0x0 means native token
- * @param price                 - Price of the token0/token1
- * @param poolType              - 0: whitelist, 1: non-whitelist
- * @param flexibleAllocation    - true/false to indicate if the user can buy a portion of allocation
- * @param vestingMetadata       - metadata for vesting schedule & fee
- * @param voucherImplementation - implementation address of the voucher, used to create its token bound account
- * @param proof                 - Merkle Tree Proof of the whitelisted users
- * @param startAt               - Start time of the vesting pool
- * @param endAt                 - End time of the vesting pool
+ * @param token0                    - The address of locked token inside the vault
+ * @param token0Amount              - Locked Amount
+ * @param token1                    - The expected token used for buying, 0x0 means native token
+ * @param expectedToken1Amount      - Expected Amount of token1
+ * @param poolType                  - 0: whitelist, 1: non-whitelist
+ * @param flexibleAllocation        - true/false to indicate if the user can buy a portion of allocation
+ * @param maxAllocationPerWallet    - max allocation (bought) amount that a wallet can participate in this pool
+ * @param royaltyRate               - royalty rate of the vesting voucher
+ * @param vestingMetadata           - metadata for vesting schedule & fee
+ * @param schedules                 - vesting schedule information
+ * @param fee                       - vesting fee
+ * @param voucherImplementation     - implementation address of the voucher, used to create its token bound account
+ * @param root                      - Merkle Tree Root, proof of the whitelisted users (only used for the whitelist pool)
+ * @param startAt                   - Start time of the vesting pool
+ * @param endAt                     - End time of the vesting pool
 */
     struct CreateVestingPoolParams {
         bytes32 hashes;

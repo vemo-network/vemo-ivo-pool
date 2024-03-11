@@ -68,6 +68,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
     function test_BuySuccessfully() public {
         CreateVestingPoolParams memory params = generateParams();
 
+
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
@@ -78,6 +79,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
         bytes32 p = stringToBytes32(source);
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = p;
+
 
         assert(MoonsoonVestingPool(pool).token1Amount(100000) == 100000);
 
