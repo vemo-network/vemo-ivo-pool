@@ -42,7 +42,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
             address(mockToken1),
             vm.addr(deployerPrivateKey),
             100000,
-            100000
+            0
         );
 
         bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(mockToken), address(mockToken1)));

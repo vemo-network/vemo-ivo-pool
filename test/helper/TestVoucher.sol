@@ -16,21 +16,16 @@ contract TestVoucher is IVoucher, ERC721 {
         lock = 0;
     }
 
+    uint256 private _fee;
+    mapping(uint256 => IVoucher.VestingFee) private _feeByTokenId;
+
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
 
     /**
-     * @return NFT address, created tokenId, erc6551 account address
+     * @return _fee amount when created
      */
-    function create(
-        address tokenAddress, IVoucher.Vesting memory vesting
-    ) public noReentrance returns (address, uint256) {
-        _safeMint(msg.sender, 1);
-
-        IERC20(tokenAddress).safeTransferFrom(
-            msg.sender, address(this), vesting.balance
-        );
-
-        return (address(this), 1);
+    function getFee(uint256 tokenId) public view returns (IVoucher.VestingFee memory) {
+        return _feeByTokenId[tokenId];
     }
 
     /**
@@ -48,6 +43,9 @@ contract TestVoucher is IVoucher, ERC721 {
         );
 
         uint256 startId = 1;
+        for (uint256 i = startId; i < startId + batch.quantity; i++) {
+            _feeByTokenId[i] = batch.vesting.fee;
+        }
 
         return (address(this), startId, startId + batch.quantity - 1);
     }

@@ -217,6 +217,14 @@ contract MoonsoonVestingPool is IERC721Receiver {
     }
 
     /**
+     * @dev check if buyer is whitelisted
+     */
+    function isWhitelist(address buyer, uint256 allocation, bytes32[] memory proof) external view returns (bool) {
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(buyer, allocation))));
+        return MerkleProof.verify(proof, _root, leaf);
+    }
+
+    /**
      * @notice function to buy in a whitelist pool
      *          - The buyer should retrieve a voucher which contains locked token
      * @param amount the amount buyer want to buy
@@ -238,7 +246,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount);
+        _createVoucher(amount, _token1Amount);
 
         emit TokenBought(
             msg.sender,
@@ -267,7 +275,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
         }
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount);
+        _createVoucher(amount, _token1Amount);
 
         emit TokenBought(
             msg.sender,
@@ -302,12 +310,23 @@ contract MoonsoonVestingPool is IERC721Receiver {
      *          - calculate vesting schedule
      *          - call to _vemoVoucher.createVoucher to create Vemo voucher
      * @param amount the amount buyer want to buy
+     * @param amountToken1 the amount buyer needs to pay
      */
-    function _createVoucher(uint256 amount) private {
+    function _createVoucher(uint256 amount, uint256 amountToken1) private {
+        uint256 feeAmount = amountToken1 * _fee.totalFee / _expectedToken1Amount;
+
+        IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
+            _fee.isFee,
+            _fee.feeTokenAddress,
+            _fee.receiverAddress,
+            feeAmount,
+            0
+        );
+
         IVoucher.Vesting memory params = IVoucher.Vesting(
             amount,
             _vestingSchedules,
-            _fee
+            voucherFee
         );
 
         IVoucher.BatchVesting memory batchVesting = IVoucher.BatchVesting(

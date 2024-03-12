@@ -42,7 +42,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
             address(mockToken1),
             vm.addr(deployerPrivateKey),
             100000,
-            100000
+            0
         );
 
         bytes32 hash = keccak256(abi.encodePacked(uint256(1), address(mockToken), address(mockToken1)));
@@ -131,5 +131,85 @@ contract MoonsoonVestingPoolTest is TestSetup {
         mockToken1.approve(pool, UINT256_MAX);
         MoonsoonVestingPool(pool).buyWhitelist(150000, 100000, proof);
         vm.stopPrank();
+    }
+
+    function test_BuySuccessfullyWithFee() public {
+        CreateVestingPoolParams memory params = generateParams();
+
+        IVoucher.VestingFee memory fee = IVoucher.VestingFee(
+            1,
+            address(mockToken1),
+            vm.addr(deployerPrivateKey),
+            100000,
+            0
+        );
+        params.fee = fee;
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(60);
+
+        bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
+        bytes32 p = stringToBytes32(source);
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = p;
+
+        assert(MoonsoonVestingPool(pool).token1Amount(100000) == 100000);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buyWhitelist(100000, 100000, proof);
+        vm.stopPrank();
+
+
+        assert(voucher.getFee(1).totalFee == 100);
+        assert(voucher.getFee(1).receiverAddress == vm.addr(deployerPrivateKey));
+        assert(voucher.getFee(1).feeTokenAddress == address(mockToken1));
+        assert(voucher.getFee(1).remainingFee == 0);
+        assert(voucher.ownerOf(1) == vm.addr(buyerPrivateKey));
+        assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 900000);
+    }
+
+    function test_BuySuccessfullyWithFeeWithDifferentToken() public {
+        CreateVestingPoolParams memory params = generateParams();
+
+        TestToken token3 = new TestToken("token3", "TK3");
+
+        IVoucher.VestingFee memory fee = IVoucher.VestingFee(
+            1,
+            address(token3),
+            vm.addr(deployerPrivateKey),
+            100000,
+            0
+        );
+        params.fee = fee;
+
+        vm.startPrank(vm.addr(deployerPrivateKey));
+        address payable pool = factory.createVestingPool(params);
+        vm.stopPrank();
+
+        skip(60);
+
+        bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
+        bytes32 p = stringToBytes32(source);
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = p;
+
+        assert(MoonsoonVestingPool(pool).token1Amount(100000) == 100000);
+
+        vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.approve(pool, UINT256_MAX);
+        MoonsoonVestingPool(pool).buyWhitelist(100000, 100000, proof);
+        vm.stopPrank();
+
+
+        assert(voucher.getFee(1).totalFee == 100);
+        assert(voucher.getFee(1).receiverAddress == vm.addr(deployerPrivateKey));
+        assert(voucher.getFee(1).feeTokenAddress == address(token3));
+        assert(voucher.getFee(1).remainingFee == 0);
+        assert(voucher.ownerOf(1) == vm.addr(buyerPrivateKey));
+        assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 900000);
     }
 }

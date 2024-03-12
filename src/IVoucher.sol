@@ -32,9 +32,7 @@ interface IVoucher {
         Vesting vesting;
         uint256 quantity;
     }
-
-    function create(address tokenAddress, Vesting memory vesting) external returns (address, uint256);
-
+    
     function createBatch(
         address tokenAddress,
         BatchVesting memory batch,
