@@ -8,20 +8,28 @@ import "./interfaces/VestingPool.sol";
 import {MoonsoonVestingPool} from "./MoonsoonVestingPool.sol";
 import "./MoonsoonVestingPool.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EIP712} from "openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MoonsoonVestingPoolFactory is EIP712 {
+contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
+
+    modifier onlyOwner() {
+        _onlyOwner();
+        _;
+    }
+
+    function _onlyOwner() internal view {
+        //directly from EOA owner, or through the account itself (which gets redirected through execute())
+        require(msg.sender == owner || msg.sender == address(this), "only owner");
+    }
 
     /*------------------------------------------------------------------------------------------------------
     Factory metadata
     ------------------------------------------------------------------------------------------------------*/
 
     // Contract deployer address
-    address private immutable _deployer;
-
-    // Operator address
-    address private _operator;
+    address public owner;
 
     // Vemo Voucher Factory
     address private _voucher;
@@ -41,18 +49,13 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         uint256 expectedtoken1Amount
     );
 
-    constructor(string memory name_, string memory version_) EIP712(name_, version_) {
-        _deployer = msg.sender;
-        _operator = _deployer;
+    function initialize(address anOwner, string memory name_, string memory version_) public virtual initializer {
+        __EIP712_init(name_, version_);
+        _initialize(anOwner);
     }
 
-    /**
-     * @dev set the operator address
-     * @notice Only allow 1 operator at a time
-     */
-    function setOperatorAddress(address _operator_address) public {
-        require(msg.sender == _deployer || msg.sender == _operator, "Only deployer/operator can set voucher factory address");
-        _operator = _operator_address;
+    function _initialize(address anOwner) internal virtual {
+        owner = anOwner;
     }
 
     /**
@@ -60,7 +63,7 @@ contract MoonsoonVestingPoolFactory is EIP712 {
      * @notice Only allow 1 voucher factory at a time
      */
     function setVoucherAddress(address voucherAddress) public {
-        require(msg.sender == _deployer || msg.sender == _operator, "Only deployer/operator can set operator address");
+        require(msg.sender == owner, "Only deployer/operator can set operator address");
         _voucher = voucherAddress;
     }
 
@@ -134,5 +137,10 @@ contract MoonsoonVestingPoolFactory is EIP712 {
         );
 
         return payable(address(vestingPool));
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal view override {
+        (newImplementation);
+        _onlyOwner();
     }
 }

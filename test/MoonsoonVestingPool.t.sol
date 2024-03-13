@@ -14,8 +14,8 @@ contract MoonsoonVestingPoolTest is TestSetup {
         super.setUp();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new MoonsoonVestingPoolFactory("MoonsoonVestingPoolFactory", "0.1");
-        factory.setOperatorAddress(vm.addr(operatorPrivateKey));
+        factory = new MoonsoonVestingPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "MoonsoonVestingPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         mockToken.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
