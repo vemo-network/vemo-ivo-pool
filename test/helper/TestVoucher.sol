@@ -18,6 +18,7 @@ contract TestVoucher is IVoucher, ERC721 {
 
     uint256 private _fee;
     mapping(uint256 => IVoucher.VestingFee) private _feeByTokenId;
+    mapping(uint256 => IVoucher.VestingSchedule[]) private _vestingScheduleByTokenId;
 
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
 
@@ -26,6 +27,13 @@ contract TestVoucher is IVoucher, ERC721 {
      */
     function getFee(uint256 tokenId) public view returns (IVoucher.VestingFee memory) {
         return _feeByTokenId[tokenId];
+    }
+
+    /**
+     * @return _vestingSchedules amount when created
+     */
+    function getVestingSchedules(uint256 tokenId, uint8 index) public view returns (IVoucher.VestingSchedule memory) {
+        return _vestingScheduleByTokenId[tokenId][index];
     }
 
     /**
@@ -45,6 +53,8 @@ contract TestVoucher is IVoucher, ERC721 {
         uint256 startId = 1;
         for (uint256 i = startId; i < startId + batch.quantity; i++) {
             _feeByTokenId[i] = batch.vesting.fee;
+            for (uint8 j = 0; j < batch.vesting.schedules.length; j++)
+                _vestingScheduleByTokenId[i].push(batch.vesting.schedules[j]);
         }
 
         return (address(this), startId, startId + batch.quantity - 1);

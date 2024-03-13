@@ -163,7 +163,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
         MoonsoonVestingPool(pool).buyWhitelist(100000, 100000, proof);
         vm.stopPrank();
 
-
+        assert(voucher.getVestingSchedules(1, 0).amount == 1000);
         assert(voucher.getFee(1).totalFee == 100);
         assert(voucher.getFee(1).receiverAddress == vm.addr(deployerPrivateKey));
         assert(voucher.getFee(1).feeTokenAddress == address(mockToken1));
@@ -204,7 +204,7 @@ contract MoonsoonVestingPoolTest is TestSetup {
         MoonsoonVestingPool(pool).buyWhitelist(100000, 100000, proof);
         vm.stopPrank();
 
-
+        assert(voucher.getVestingSchedules(1, 0).amount == 1000);
         assert(voucher.getFee(1).totalFee == 100);
         assert(voucher.getFee(1).receiverAddress == vm.addr(deployerPrivateKey));
         assert(voucher.getFee(1).feeTokenAddress == address(token3));

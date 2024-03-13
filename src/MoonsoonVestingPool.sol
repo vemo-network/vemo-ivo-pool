@@ -323,9 +323,26 @@ contract MoonsoonVestingPool is IERC721Receiver {
             0
         );
 
+        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](_vestingSchedules.length);
+
+        for (uint8 i = 0; i < _vestingSchedules.length; i++) {
+            uint256 vestingAmount = amountToken1 * _vestingSchedules[i].amount / _expectedToken1Amount;
+            IVoucher.VestingSchedule memory schedule = IVoucher.VestingSchedule(
+                vestingAmount,
+                _vestingSchedules[i].vestingType,
+                _vestingSchedules[i].linearType,
+                _vestingSchedules[i].startTimestamp,
+                _vestingSchedules[i].endTimestamp,
+                _vestingSchedules[i].isVested,
+                vestingAmount
+            );
+
+            schedules[i] = schedule;
+        }
+
         IVoucher.Vesting memory params = IVoucher.Vesting(
             amount,
-            _vestingSchedules,
+            schedules,
             voucherFee
         );
 
