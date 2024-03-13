@@ -59,8 +59,15 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @dev set the voucher factory address
-     * @notice Only allow 1 voucher factory at a time
+     * @dev get the voucher address
+     */
+    function getVoucherAddress() public view returns (address) {
+        return _voucher;
+    }
+
+    /**
+     * @dev set the voucher address
+     * @notice Only allow 1 voucher at a time
      */
     function setVoucherAddress(address voucherAddress) public {
         require(msg.sender == owner, "Only deployer/operator can set operator address");
