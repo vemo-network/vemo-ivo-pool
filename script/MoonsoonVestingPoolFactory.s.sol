@@ -13,7 +13,7 @@ contract MoonsoonVestingPoolFactoryScript is Script {
         vm.startBroadcast(deployerPrivateKey);
         address proxy = Upgrades.deployUUPSProxy(
             "MoonsoonVestingPoolFactory.sol",
-            abi.encodeCall(MoonsoonVestingPoolFactory.initialize, (address(0xd71ff475af81442AFe5288D45AE5E790c4828b75), "MoonsoonVestingPoolFactory", "0.1"))
+            abi.encodeCall(MoonsoonVestingPoolFactory.initialize, (address(0xF42694796976e9Fc2fA7287b4CFAD218516d0BC7), "MoonsoonVestingPoolFactory", "0.1"))
         );
         vm.stopBroadcast();
     }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin-contracts/utils/math/Math.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -95,7 +96,6 @@ contract MoonsoonVestingPool is IERC721Receiver {
         IVoucher.VestingSchedule[] schedules;
         IVoucher.VestingFee fee;
     }
-
 
     constructor(VestingPool memory vestingPool, address operator) {
         _operator = operator;
@@ -313,7 +313,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param amountToken1 the amount buyer needs to pay
      */
     function _createVoucher(uint256 amount, uint256 amountToken1) private {
-        uint256 feeAmount = amountToken1 * _fee.totalFee / _expectedToken1Amount;
+        uint256 feeAmount = Math.mulDiv(amountToken1, _fee.totalFee, _expectedToken1Amount);
 
         IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
             _fee.isFee,
@@ -326,7 +326,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
         IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](_vestingSchedules.length);
 
         for (uint8 i = 0; i < _vestingSchedules.length; i++) {
-            uint256 vestingAmount = amountToken1 * _vestingSchedules[i].amount / _expectedToken1Amount;
+            uint256 vestingAmount = Math.mulDiv(amountToken1, _vestingSchedules[i].amount, _expectedToken1Amount);
             IVoucher.VestingSchedule memory schedule = IVoucher.VestingSchedule(
                 vestingAmount,
                 _vestingSchedules[i].vestingType,
@@ -363,8 +363,8 @@ contract MoonsoonVestingPool is IERC721Receiver {
      *         - it's public for testing purpose
      * @param amount an uint256 amount of `token0` that buyer wants to buy
      */
-    function token1Amount(uint256 amount) public returns (uint256){
-        return _expectedToken1Amount * amount / _token0Amount;
+    function token1Amount(uint256 amount) public view returns (uint256){
+        return Math.mulDiv(_expectedToken1Amount, amount, _token0Amount);
     }
 
     /**
