@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin-contracts/utils/math/Math.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
@@ -118,7 +115,8 @@ contract MoonsoonVestingPool is IERC721Receiver {
         _root = vestingPool.root;
         _fee = vestingPool.fee;
 
-        for (uint8 i = 0; i < vestingPool.schedules.length; i++) {
+        uint256 scheduleLength = vestingPool.schedules.length;
+        for (uint8 i = 0; i < scheduleLength; i++) {
             IVoucher.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
 
             _vestingSchedules.push(vestingSchedule);
@@ -130,7 +128,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @dev allow operator to claim the funds of this vesting pool
      * @param token address of the token to claim fund from
      */
-    function claim(address token) public {
+    function claim(address token) external {
         require(msg.sender == _operator, "only operator can claim the funds");
 
         _doTransferERC20(token, address(this), msg.sender, _getBalance(token, address(this)));
@@ -140,7 +138,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @dev set the operator address
      * @notice Only allow 1 operator at a time
      */
-    function setOperatorAddress(address _operator_address) public {
+    function setOperatorAddress(address _operator_address) external {
         require(msg.sender == _operator, "Only operator can set operator address");
         _operator = _operator_address;
     }
@@ -313,7 +311,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param amountToken1 the amount buyer needs to pay
      */
     function _createVoucher(uint256 amount, uint256 amountToken1) private {
-        uint256 feeAmount = Math.mulDiv(amountToken1, _fee.totalFee, _expectedToken1Amount);
+        uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
         IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
             _fee.isFee,
@@ -325,8 +323,9 @@ contract MoonsoonVestingPool is IERC721Receiver {
 
         IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](_vestingSchedules.length);
 
-        for (uint8 i = 0; i < _vestingSchedules.length; i++) {
-            uint256 vestingAmount = Math.mulDiv(amountToken1, _vestingSchedules[i].amount, _expectedToken1Amount);
+        uint256 scheduleLength = _vestingSchedules.length;
+        for (uint8 i = 0; i < scheduleLength; i++) {
+            uint256 vestingAmount = Math.mulDiv(amount, _vestingSchedules[i].amount, _token0Amount, Math.Rounding.Floor);
             IVoucher.VestingSchedule memory schedule = IVoucher.VestingSchedule(
                 vestingAmount,
                 _vestingSchedules[i].vestingType,
@@ -364,7 +363,7 @@ contract MoonsoonVestingPool is IERC721Receiver {
      * @param amount an uint256 amount of `token0` that buyer wants to buy
      */
     function token1Amount(uint256 amount) public view returns (uint256){
-        return Math.mulDiv(_expectedToken1Amount, amount, _token0Amount);
+        return _expectedToken1Amount == 0 ? 0 : Math.mulDiv(_expectedToken1Amount, amount, _token0Amount, Math.Rounding.Floor);
     }
 
     /**

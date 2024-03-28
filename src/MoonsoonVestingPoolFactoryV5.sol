@@ -6,14 +6,12 @@ import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
 import {MoonsoonVestingPool} from "./MoonsoonVestingPool.sol";
-import {MoonsoonVestingPoolFactoryV2} from "./MoonsoonVestingPoolFactoryV2.sol";
 import "./MoonsoonVestingPool.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-/// @custom:oz-upgrades-from MoonsoonVestingPoolFactoryV2
-contract MoonsoonVestingPoolFactoryV3 is EIP712Upgradeable, UUPSUpgradeable {
+contract MoonsoonVestingPoolFactoryV5 is EIP712Upgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     modifier onlyOwner() {
