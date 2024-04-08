@@ -11,7 +11,7 @@ import "./interfaces/VestingPool.sol";
 import "./IVoucher.sol";
 
 // @title Moonsoon VestingPool
-contract MoonsoonVestingPool is IERC721Receiver {
+contract VemoVestingPool is IERC721Receiver {
     using SafeERC20 for IERC20;
 
     using MerkleProof for bytes32[];

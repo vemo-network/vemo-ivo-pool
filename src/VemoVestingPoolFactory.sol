@@ -5,13 +5,13 @@ import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
-import {MoonsoonVestingPool} from "./MoonsoonVestingPool.sol";
-import "./MoonsoonVestingPool.sol";
+import {VemoVestingPool} from "./VemoVestingPool.sol";
+import "./VemoVestingPool.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
+contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     modifier onlyOwner() {
@@ -58,6 +58,10 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         owner = anOwner;
     }
 
+    function transferOwner(address newOwner) public onlyOwner {
+        owner = newOwner;
+    }
+
     /**
      * @dev get the voucher address
      */
@@ -89,8 +93,8 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
      * using the moonsoon operator address.
      *
      * - A new {Voucher} is deployed by sending `voucherData` params to {VoucherFactory} address
-     * - {MoonsoonVestingPool.VestingPool} from `params` will be sent to {MoonsoonVestingPool}
-     *   to create a new MoonsoonVestingPool
+     * - {VemoVestingPool.sol.VestingPool} from `params` will be sent to {VemoVestingPool.sol}
+     *   to create a new VemoVestingPool.sol
      * - The Factory will take the `token0Amount` of `token0` from sender, and send them to the new
      *   created vesting pool
      *
@@ -98,13 +102,13 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     */
     function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
-        require(params.token0Amount > params.maxAllocationPerWallet, 'token0Amount should be greater than maxAllocationPerWallet');
+        require(params.token0Amount >= params.maxAllocationPerWallet, 'token0Amount should be greater than maxAllocationPerWallet');
 
         bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.token0, params.token1));
         require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
 
         // Create a new vesting pool
-        MoonsoonVestingPool.VestingPool memory _pool = MoonsoonVestingPool.VestingPool(
+        VemoVestingPool.VestingPool memory _pool = VemoVestingPool.VestingPool(
             params.token0,
             params.token0Amount,
             params.token1,
@@ -120,7 +124,7 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
             params.schedules,
             params.fee
         );
-        MoonsoonVestingPool vestingPool = new MoonsoonVestingPool(_pool, msg.sender);
+        VemoVestingPool vestingPool = new VemoVestingPool(_pool, msg.sender);
 
         IERC20(params.token0).safeTransferFrom(
             msg.sender, address(this), params.token0Amount
@@ -149,5 +153,9 @@ contract MoonsoonVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     function _authorizeUpgrade(address newImplementation) internal view override {
         (newImplementation);
         _onlyOwner();
+    }
+
+    function getToken1(address payable pool, uint256 amount) public returns (uint256) {
+        return VemoVestingPool(pool).token1Amount(amount);
     }
 }

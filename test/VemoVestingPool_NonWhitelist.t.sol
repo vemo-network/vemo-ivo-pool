@@ -3,24 +3,24 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/MoonsoonVestingPool.sol";
-import "../src/MoonsoonVestingPoolFactory.sol";
+import "../src/VemoVestingPool.sol";
+import "../src/VemoVestingPoolFactory.sol";
 import "./TestSetup.t.sol";
 
-contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
-    MoonsoonVestingPoolFactory private factory;
+contract VemoVestingPoolTest_NonWhitelist is TestSetup {
+    VemoVestingPoolFactory private factory;
 
     function setUp() public override {
         super.setUp();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new MoonsoonVestingPoolFactory();
-        factory.initialize(vm.addr(deployerPrivateKey), "MoonsoonVestingPoolFactory", "0.1");
+        factory = new VemoVestingPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "VemoVestingPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         mockToken.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
 
-        console.log("MoonsoonVestingPoolFactory Address: ", address(factory));
+        console.log("VemoVestingPoolFactory Address: ", address(factory));
     }
 
     function generateParams() private view returns (CreateVestingPoolParams memory params) {
@@ -76,7 +76,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        MoonsoonVestingPool(pool).buy(1000000);
+        VemoVestingPool(pool).buy(1000000);
         vm.stopPrank();
 
         assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 0);
@@ -91,14 +91,14 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000);
+        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000);
 
         skip(60);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
 
         assert(pool.balance == 1000000000);
@@ -112,14 +112,14 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(60);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy{value: 232}(1000000);
+        VemoVestingPool(pool).buy{value: 232}(1000000);
         vm.stopPrank();
     }
 
@@ -131,14 +131,14 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(40);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
     }
 
@@ -150,14 +150,14 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(125);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy{value: MoonsoonVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
     }
 
@@ -172,7 +172,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        MoonsoonVestingPool(pool).buy(3000000);
+        VemoVestingPool(pool).buy(3000000);
         vm.stopPrank();
     }
 
@@ -187,8 +187,8 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        MoonsoonVestingPool(pool).buy(1000000);
-        MoonsoonVestingPool(pool).buy(1100000);
+        VemoVestingPool(pool).buy(1000000);
+        VemoVestingPool(pool).buy(1100000);
         vm.stopPrank();
     }
 
@@ -204,7 +204,7 @@ contract MoonsoonVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        MoonsoonVestingPool(pool).buy(1000000);
+        VemoVestingPool(pool).buy(1000000);
         vm.stopPrank();
     }
 

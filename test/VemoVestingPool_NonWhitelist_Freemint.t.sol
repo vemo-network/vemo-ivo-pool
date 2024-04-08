@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/MoonsoonVestingPool.sol";
-import "../src/MoonsoonVestingPoolFactory.sol";
+import "../src/VemoVestingPool.sol";
+import "../src/VemoVestingPoolFactory.sol";
 import "./TestSetup.t.sol";
 
-contract MoonsoonVestingPoolTest_NonWhitelist2 is TestSetup {
-    MoonsoonVestingPoolFactory private factory;
+contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
+    VemoVestingPoolFactory private factory;
 
     TestToken private _mockToken3;
 
@@ -19,8 +19,8 @@ contract MoonsoonVestingPoolTest_NonWhitelist2 is TestSetup {
         _mockToken3.mint(vm.addr(deployerPrivateKey), 100000000000000000000);
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new MoonsoonVestingPoolFactory();
-        factory.initialize(vm.addr(deployerPrivateKey), "MoonsoonVestingPoolFactory", "0.1");
+        factory = new VemoVestingPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "VemoVestingPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         _mockToken3.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
@@ -75,12 +75,12 @@ contract MoonsoonVestingPoolTest_NonWhitelist2 is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(50000000000000000000) == 0);
+        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 0);
 
         skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy(50000000000000000000);
+        VemoVestingPool(pool).buy(50000000000000000000);
         vm.stopPrank();
     }
 
@@ -93,12 +93,12 @@ contract MoonsoonVestingPoolTest_NonWhitelist2 is TestSetup {
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(MoonsoonVestingPool(pool).token1Amount(50000000000000000000) == 0);
+        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 0);
 
         skip(60);
-        
+
         vm.startPrank(vm.addr(buyerPrivateKey));
-        MoonsoonVestingPool(pool).buy{value: 0}(50000000000000000000);
+        VemoVestingPool(pool).buy{value: 0}(50000000000000000000);
         vm.stopPrank();
     }
 }
