@@ -120,6 +120,7 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
             params.startAt,
             params.endAt,
             _voucher,
+            params.baseUrl,
             params.root,
             params.schedules,
             params.fee

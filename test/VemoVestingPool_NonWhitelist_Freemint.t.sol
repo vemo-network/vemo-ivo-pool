@@ -62,6 +62,7 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
             500,
             schedules,
             fee,
+            "https://test.com",
             keccak256(""),
             block.timestamp + 60,
             block.timestamp + 120
@@ -80,7 +81,7 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
         skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy(50000000000000000000);
+        VemoVestingPool(pool).buy(50000000000000000000, "/test.png");
         vm.stopPrank();
     }
 
@@ -98,7 +99,7 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
         skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: 0}(50000000000000000000);
+        VemoVestingPool(pool).buy{value: 0}(50000000000000000000, "/test.png");
         vm.stopPrank();
     }
 }

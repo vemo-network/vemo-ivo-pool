@@ -32,6 +32,9 @@ contract VemoVestingPool is IERC721Receiver {
     // Operator address
     address private _operator;
 
+    // Voucher base url
+    string private _baseUrl;
+
     // Mapping address to bought Amount;
     mapping(address => uint256) private _boughtAmount;
 
@@ -89,6 +92,7 @@ contract VemoVestingPool is IERC721Receiver {
         uint256 startAt;
         uint256 endAt;
         address voucherAddress;
+        string baseUrl;
         bytes32 root;
         IVoucher.VestingSchedule[] schedules;
         IVoucher.VestingFee fee;
@@ -114,6 +118,7 @@ contract VemoVestingPool is IERC721Receiver {
         _vemoVoucher = IVoucher(_voucherAddress);
         _root = vestingPool.root;
         _fee = vestingPool.fee;
+        _baseUrl = vestingPool.baseUrl;
 
         uint256 scheduleLength = vestingPool.schedules.length;
         for (uint8 i = 0; i < scheduleLength; i++) {
@@ -162,6 +167,13 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function endTime() external view returns (uint256) {
         return _endTime;
+    }
+
+    /**
+     * @dev get voucher's base url of this vesting pool
+     */
+    function baseUrl() external view returns (string memory) {
+        return _baseUrl;
     }
 
     /**
@@ -228,8 +240,9 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param allocation the allocation to the buyer
      * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
+     * @param tokenUri the token uri used for the voucher created.
      */
-    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
+    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
@@ -244,7 +257,7 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount);
+        _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
             msg.sender,
@@ -260,8 +273,9 @@ contract VemoVestingPool is IERC721Receiver {
      * @notice function to buy in a non whitelist pool
      *          - The buyer should retrieve a voucher which contains locked token
      * @param amount the amount buyer want to buy
+     * @param tokenUri the token uri used for the voucher created.
      */
-    function buy(uint256 amount) external payable {
+    function buy(uint256 amount, string memory tokenUri) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= _maxAllocationPerWallet, "bought amount exceeds max allocation.");
@@ -273,7 +287,7 @@ contract VemoVestingPool is IERC721Receiver {
         }
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount);
+        _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
             msg.sender,
@@ -310,7 +324,7 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param amountToken1 the amount buyer needs to pay
      */
-    function _createVoucher(uint256 amount, uint256 amountToken1) private {
+    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri) private {
         uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
         IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
@@ -345,9 +359,12 @@ contract VemoVestingPool is IERC721Receiver {
             voucherFee
         );
 
+        string[] memory tokenUris = new string[](1);
+        tokenUris[0] = string.concat(_baseUrl, tokenUri);
         IVoucher.BatchVesting memory batchVesting = IVoucher.BatchVesting(
             params,
-            1
+            1,
+            tokenUris
         );
 
         IERC20(_token0).approve(address(_vemoVoucher), amount);

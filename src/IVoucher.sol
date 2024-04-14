@@ -31,8 +31,9 @@ interface IVoucher {
     struct BatchVesting {
         Vesting vesting;
         uint256 quantity;
+        string[] tokenUri;
     }
-    
+
     function createBatch(
         address tokenAddress,
         BatchVesting memory batch,

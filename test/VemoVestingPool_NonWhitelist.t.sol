@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "@openzeppelin-contracts/utils/Strings.sol";
 import "../src/interfaces/VestingPool.sol";
 import "../src/VemoVestingPool.sol";
 import "../src/VemoVestingPoolFactory.sol";
@@ -9,6 +10,9 @@ import "./TestSetup.t.sol";
 
 contract VemoVestingPoolTest_NonWhitelist is TestSetup {
     VemoVestingPoolFactory private factory;
+
+    string private constant  baseUrl = "https://test.com";
+    string private constant  baseUri = "https://test.com/test.png";
 
     function setUp() public override {
         super.setUp();
@@ -59,6 +63,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
             500,
             schedules,
             fee,
+            "https://test.com",
             keccak256(""),
             block.timestamp + 60,
             block.timestamp + 120
@@ -76,7 +81,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000);
+        VemoVestingPool(pool).buy(1000000, "/test.png");
         vm.stopPrank();
 
         assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 0);
@@ -98,9 +103,11 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
         vm.stopPrank();
 
+        assert(Strings.equal(VemoVestingPool(pool).baseUrl(), baseUrl));
+        assert(Strings.equal(string.concat(VemoVestingPool(pool).baseUrl(), "/test.png"), baseUri));
         assert(pool.balance == 1000000000);
     }
 
@@ -119,7 +126,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: 232}(1000000);
+        VemoVestingPool(pool).buy{value: 232}(1000000, "/test.png");
         vm.stopPrank();
     }
 
@@ -138,7 +145,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
         vm.stopPrank();
     }
 
@@ -157,7 +164,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000);
+        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
         vm.stopPrank();
     }
 
@@ -172,7 +179,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(3000000);
+        VemoVestingPool(pool).buy(3000000, "/test.png");
         vm.stopPrank();
     }
 
@@ -187,8 +194,8 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000);
-        VemoVestingPool(pool).buy(1100000);
+        VemoVestingPool(pool).buy(1000000, "/test.png");
+        VemoVestingPool(pool).buy(1100000, "/test.png");
         vm.stopPrank();
     }
 
@@ -204,7 +211,7 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000);
+        VemoVestingPool(pool).buy(1000000, "/test.png");
         vm.stopPrank();
     }
 

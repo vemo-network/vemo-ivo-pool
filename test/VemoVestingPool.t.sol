@@ -59,6 +59,7 @@ contract VemoVestingPoolTest is TestSetup {
             500,
             schedules,
             fee,
+            "https://test.com",
             root,
             block.timestamp + 60,
             block.timestamp + 120
@@ -85,7 +86,7 @@ contract VemoVestingPoolTest is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof);
+        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof, "/test.png");
         vm.stopPrank();
 
         assert(voucher.ownerOf(1) == vm.addr(buyerPrivateKey));
@@ -108,7 +109,7 @@ contract VemoVestingPoolTest is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(150000, 100000, proof);
+        VemoVestingPool(pool).buyWhitelist(150000, 100000, proof, "/test.png");
         vm.stopPrank();
     }
 
@@ -129,7 +130,7 @@ contract VemoVestingPoolTest is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(150000, 100000, proof);
+        VemoVestingPool(pool).buyWhitelist(150000, 100000, proof, "/test.png");
         vm.stopPrank();
     }
 
@@ -160,7 +161,7 @@ contract VemoVestingPoolTest is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof);
+        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof, "/test.png");
         vm.stopPrank();
 
         assert(voucher.getVestingSchedules(1, 0).amount == 1000);
@@ -201,7 +202,7 @@ contract VemoVestingPoolTest is TestSetup {
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof);
+        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof, "/test.png");
         vm.stopPrank();
 
         assert(voucher.getVestingSchedules(1, 0).amount == 1000);

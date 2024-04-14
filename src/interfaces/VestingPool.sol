@@ -17,6 +17,7 @@ import "../IVoucher.sol";
  * @param schedules                 - vesting schedule information
  * @param fee                       - vesting fee
  * @param voucherImplementation     - implementation address of the voucher, used to create its token bound account
+ * @param baseUrl                   - Base Url for Voucher created by this pool
  * @param root                      - Merkle Tree Root, proof of the whitelisted users (only used for the whitelist pool)
  * @param startAt                   - Start time of the vesting pool
  * @param endAt                     - End time of the vesting pool
@@ -34,6 +35,7 @@ import "../IVoucher.sol";
         uint96 royaltyRate;
         IVoucher.VestingSchedule[] schedules;
         IVoucher.VestingFee fee;
+        string baseUrl;
         bytes32 root;
         uint256 startAt;
         uint256 endAt;
