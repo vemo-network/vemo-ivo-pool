@@ -140,6 +140,23 @@ contract VemoVestingPool is IERC721Receiver {
     }
 
     /**
+     * @dev allow operator to update the root of the merkle tree
+     * @param root the new root
+     */
+    function setRoot(bytes32 root) public {
+        require(msg.sender == _operator, "only operator can claim the funds");
+
+        _root = root;
+    }
+
+    /**
+     * @dev return the current root of the merkle tree
+     */
+    function getRoot(bytes32 root) public returns (bytes32) {
+        return _root;
+    }
+
+    /**
      * @dev set the operator address
      * @notice Only allow 1 operator at a time
      */
