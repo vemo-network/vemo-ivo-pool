@@ -101,7 +101,11 @@ contract VemoVestingPool is IERC721Receiver {
     constructor(VestingPool memory vestingPool, address operator) {
         _operator = operator;
 
-        require(block.timestamp < vestingPool.startAt, "start time is in the pass");
+        require(block.timestamp < vestingPool.startAt, "start time is in the past");
+        require(vestingPool.startAt < vestingPool.endAt, "end time is in the past");
+        require(_token0Amount > 0, "principle token amount must be larger than zero");
+        require(_maxAllocationPerWallet > 0, "maxAllocationPerWallet must be larger than zero");
+        
         require(vestingPool.royaltyRate <= 10000, "royalty rate is too high");
 
         _token0 = vestingPool.token0;
@@ -135,6 +139,7 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function claim(address token) external {
         require(msg.sender == _operator, "only operator can claim the funds");
+        require(block.timestamp > _endTime, "only expired pool only");
 
         _doTransferERC20(token, address(this), msg.sender, _getBalance(token, address(this)));
     }
@@ -259,7 +264,7 @@ contract VemoVestingPool is IERC721Receiver {
      * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
      * @param tokenUri the token uri used for the voucher created.
      */
-    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri) external payable {
+    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri, address receiver) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
@@ -274,7 +279,7 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount, tokenUri);
+        _createVoucher(amount, _token1Amount, tokenUri, receiver);
 
         emit TokenBought(
             msg.sender,
@@ -341,7 +346,7 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param amountToken1 the amount buyer needs to pay
      */
-    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri) private {
+    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri, address receiver) private {
         uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
         IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
