@@ -103,8 +103,8 @@ contract VemoVestingPool is IERC721Receiver {
 
         require(block.timestamp < vestingPool.startAt, "start time is in the past");
         require(vestingPool.startAt < vestingPool.endAt, "end time is in the past");
-        require(_token0Amount > 0, "principle token amount must be larger than zero");
-        require(_maxAllocationPerWallet > 0, "maxAllocationPerWallet must be larger than zero");
+        require(vestingPool.token0Amount > 0, "principle token amount must be larger than zero");
+        require(vestingPool.maxAllocationPerWallet > 0, "maxAllocationPerWallet must be larger than zero");
         
         require(vestingPool.royaltyRate <= 10000, "royalty rate is too high");
 
