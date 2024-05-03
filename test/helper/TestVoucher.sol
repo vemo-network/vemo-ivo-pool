@@ -42,9 +42,10 @@ contract TestVoucher is IVoucher, ERC721 {
     function createBatch(
         address tokenAddress,
         BatchVesting memory batch,
-        uint96 royaltyRate
+        uint96 royaltyRate,
+        address receiver
     ) public noReentrance returns (address, uint256, uint256) {
-        _safeMint(msg.sender, 1);
+        _safeMint(receiver, 1);
 
         IERC20(tokenAddress).safeTransferFrom(
             msg.sender, address(this), batch.vesting.balance

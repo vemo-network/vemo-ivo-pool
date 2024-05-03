@@ -264,7 +264,7 @@ contract VemoVestingPool is IERC721Receiver {
      * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
      * @param tokenUri the token uri used for the voucher created.
      */
-    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri, address receiver) external payable {
+    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
@@ -279,7 +279,7 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount, tokenUri, receiver);
+        _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
             msg.sender,
@@ -346,7 +346,7 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param amountToken1 the amount buyer needs to pay
      */
-    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri, address receiver) private {
+    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri) private {
         uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
         IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
@@ -390,10 +390,8 @@ contract VemoVestingPool is IERC721Receiver {
         );
 
         IERC20(_token0).approve(address(_vemoVoucher), amount);
-        (address voucher, uint256 startId, uint256 endId) = _vemoVoucher.createBatch(_token0, batchVesting, _royaltyRate);
+        (address voucher, uint256 startId, uint256 endId) = _vemoVoucher.createBatch(_token0, batchVesting, _royaltyRate, msg.sender);
 
-        for (uint256 i = startId; i <= endId; i++)
-            ERC721(voucher).transferFrom(address(this), msg.sender, i);
     }
 
     /**

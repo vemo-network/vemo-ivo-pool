@@ -37,6 +37,7 @@ interface IVoucher {
     function createBatch(
         address tokenAddress,
         BatchVesting memory batch,
-        uint96 royaltyRate
+        uint96 royaltyRate,
+        address receiver
     ) external returns (address, uint256, uint256);
 }
