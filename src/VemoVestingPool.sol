@@ -279,6 +279,8 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
+        require(_token1Amount > 0, "wrong offer value");
+
         _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
@@ -309,6 +311,8 @@ contract VemoVestingPool is IERC721Receiver {
         }
 
         uint256 _token1Amount = _buy(amount);
+        require(_token1Amount > 0, "wrong offer value");
+        
         _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
@@ -319,8 +323,6 @@ contract VemoVestingPool is IERC721Receiver {
             amount,
             _token1Amount
         );
-
-        uint256 balance = _getBalance(_token1, address(this));
     }
 
     /**
