@@ -55,7 +55,7 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
             address(_mockToken3),
             100000000000000000000,
             address(mockToken1),
-            0,
+            10000000000000000000,
             1,
             true,
             50000000000000000000,
@@ -75,12 +75,14 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
+
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 0);
+        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 5000000000000000000);
 
         skip(60);
-
         vm.startPrank(vm.addr(buyerPrivateKey));
+        mockToken1.mint(vm.addr(buyerPrivateKey), 5000000000000000000);
+        mockToken1.approve(pool, 5000000000000000000);
         VemoVestingPool(pool).buy(50000000000000000000, "/test.png");
         vm.stopPrank();
     }
@@ -88,18 +90,19 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
     function test_BuySuccessfullyWithETH() public {
         CreateVestingPoolParams memory params = generateParams();
         params.token1 = address(0);
-        params.expectedToken1Amount = 0;
+        params.expectedToken1Amount = 10000000000000000000;
 
         vm.startPrank(vm.addr(deployerPrivateKey));
         address payable pool = factory.createVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 0);
+        assert(VemoVestingPool(pool).token1Amount(50000000000000000000) == 5000000000000000000);
 
         skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: 0}(50000000000000000000, "/test.png");
+        vm.deal(vm.addr(buyerPrivateKey), 5000000000000000000);
+        VemoVestingPool(pool).buy{value: 5000000000000000000}(50000000000000000000, "/test.png");
         vm.stopPrank();
     }
 }

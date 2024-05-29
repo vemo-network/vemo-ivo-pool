@@ -279,7 +279,6 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        require(_token1Amount > 0, "wrong offer value");
 
         _createVoucher(amount, _token1Amount, tokenUri);
 
@@ -311,8 +310,7 @@ contract VemoVestingPool is IERC721Receiver {
         }
 
         uint256 _token1Amount = _buy(amount);
-        require(_token1Amount > 0, "wrong offer value");
-        
+
         _createVoucher(amount, _token1Amount, tokenUri);
 
         emit TokenBought(
@@ -333,6 +331,7 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function _buy(uint256 amount) internal returns (uint256){
         uint256 _token1Amount = token1Amount(amount);
+        require(_token1Amount > 0, "wrong offer value");
 
         _doTransferERC20(_token1, msg.sender, address(this), _token1Amount);
 
@@ -392,8 +391,7 @@ contract VemoVestingPool is IERC721Receiver {
         );
 
         IERC20(_token0).approve(address(_vemoVoucher), amount);
-        (address voucher, uint256 startId, uint256 endId) = _vemoVoucher.createBatch(_token0, batchVesting, _royaltyRate, msg.sender);
-
+        _vemoVoucher.createBatchFor(_token0, batchVesting, _royaltyRate, msg.sender);
     }
 
     /**

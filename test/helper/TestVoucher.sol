@@ -39,13 +39,34 @@ contract TestVoucher is IVoucher, ERC721 {
     /**
      * @return NFT address, created tokenId, erc6551 account address
      */
-    function createBatch(
+    function createBatchFor(
         address tokenAddress,
         BatchVesting memory batch,
         uint96 royaltyRate,
         address receiver
     ) public noReentrance returns (address, uint256, uint256) {
         _safeMint(receiver, 1);
+
+        IERC20(tokenAddress).safeTransferFrom(
+            msg.sender, address(this), batch.vesting.balance
+        );
+
+        uint256 startId = 1;
+        for (uint256 i = startId; i < startId + batch.quantity; i++) {
+            _feeByTokenId[i] = batch.vesting.fee;
+            for (uint8 j = 0; j < batch.vesting.schedules.length; j++)
+                _vestingScheduleByTokenId[i].push(batch.vesting.schedules[j]);
+        }
+
+        return (address(this), startId, startId + batch.quantity - 1);
+    }
+
+    function createBatch(
+        address tokenAddress,
+        BatchVesting memory batch,
+        uint96 royaltyRate
+    ) public noReentrance returns (address, uint256, uint256) {
+        _safeMint(msg.sender, 1);
 
         IERC20(tokenAddress).safeTransferFrom(
             msg.sender, address(this), batch.vesting.balance
