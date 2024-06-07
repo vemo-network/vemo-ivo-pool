@@ -331,7 +331,9 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function _buy(uint256 amount) internal returns (uint256){
         uint256 _token1Amount = token1Amount(amount);
-        require(_token1Amount > 0, "wrong offer value");
+        if (_expectedToken1Amount > 0) {
+            require(_token1Amount > 0, "wrong offer value");
+        }
 
         _doTransferERC20(_token1, msg.sender, address(this), _token1Amount);
 
