@@ -3,11 +3,11 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/pools/VemoVestingPool.sol";
+import "../src/pools/VemoFixedStakingPool.sol";
 import "../src/VemoPoolFactory.sol";
 import "./TestSetup.t.sol";
 
-contract VemoVestingPoolTest is TestSetup {
+contract VemoFixedStakingPoolTest is TestSetup {
     VemoPoolFactory private factory;
 
     function setUp() public override {
@@ -66,31 +66,19 @@ contract VemoVestingPoolTest is TestSetup {
         );
     }
 
-    function test_CreateFixedStakingPool() public {
-        CreateVestingPoolParams memory params = generateParams();
-
-        vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
-        vm.stopPrank();
-
-        skip(60);
-
-        bytes memory source = hex"af4177ad59fb38eeb0a69363fb1e21f23129d65e1e7f7aad13fe6bb6ce5a4adc";
-        bytes32 p = stringToBytes32(source);
-        bytes32[] memory proof = new bytes32[](1);
-        proof[0] = p;
-
-
-        assert(VemoVestingPool(pool).token1Amount(100000) == 100000);
-
-        vm.startPrank(vm.addr(buyerPrivateKey));
-        mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buyWhitelist(100000, 100000, proof, "/test.png");
-        vm.stopPrank();
-
-        assert(voucher.ownerOf(1) == vm.addr(buyerPrivateKey));
-        assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 900000);
+    function test_CreateFixedStakingPoolSuccessfully() public {
+        assert(true == false);
     }
 
+    function test_StakeSuccessfully() public {
+        assert(true == false);
+    }
 
+    function test_ChangingAllocation() public {
+        assert(true == false);
+    }
+
+    function test_ChangingReward() public {
+        assert(true == false);
+    }
 }

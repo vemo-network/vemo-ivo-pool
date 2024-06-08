@@ -7,8 +7,8 @@ import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
-import "./interfaces/VestingPool.sol";
-import "./IVoucher.sol";
+import "../interfaces/VestingPool.sol";
+import "../interfaces/IVoucherFactory.sol";
 
 // @title Moonsoon VestingPool
 contract VemoVestingPool is IERC721Receiver {
@@ -42,7 +42,7 @@ contract VemoVestingPool is IERC721Receiver {
     address private _voucherAddress;
 
     // Vemo voucher
-    IVoucher private _vemoVoucher;
+    IVoucherFactory private _vemoVoucher;
 
     // Start/end time of the pool
     uint256 private _startTime;
@@ -73,8 +73,8 @@ contract VemoVestingPool is IERC721Receiver {
     uint96 private _royaltyRate;
 
     // Vesting Metadata
-    IVoucher.VestingSchedule[] private _vestingSchedules;
-    IVoucher.VestingFee private _fee;
+    IVoucherFactory.VestingSchedule[] private _vestingSchedules;
+    IVoucherFactory.VestingFee private _fee;
 
     // root
     bytes32 private _root;
@@ -94,8 +94,8 @@ contract VemoVestingPool is IERC721Receiver {
         address voucherAddress;
         string baseUrl;
         bytes32 root;
-        IVoucher.VestingSchedule[] schedules;
-        IVoucher.VestingFee fee;
+        IVoucherFactory.VestingSchedule[] schedules;
+        IVoucherFactory.VestingFee fee;
     }
 
     constructor(VestingPool memory vestingPool, address operator) {
@@ -118,14 +118,14 @@ contract VemoVestingPool is IERC721Receiver {
         _startTime = vestingPool.startAt;
         _endTime = vestingPool.endAt;
         _voucherAddress = vestingPool.voucherAddress;
-        _vemoVoucher = IVoucher(_voucherAddress);
+        _vemoVoucher = IVoucherFactory(_voucherAddress);
         _root = vestingPool.root;
         _fee = vestingPool.fee;
         _baseUrl = vestingPool.baseUrl;
 
         uint256 scheduleLength = vestingPool.schedules.length;
         for (uint8 i = 0; i < scheduleLength; i++) {
-            IVoucher.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
+            IVoucherFactory.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
 
             _vestingSchedules.push(vestingSchedule);
         }
@@ -229,14 +229,14 @@ contract VemoVestingPool is IERC721Receiver {
     /**
      * @dev get vesting schedule
      */
-    function vestingSchedules() external view returns (IVoucher.VestingSchedule[] memory) {
+    function vestingSchedules() external view returns (IVoucherFactory.VestingSchedule[] memory) {
         return _vestingSchedules;
     }
 
     /**
      * @dev get vesting fee
      */
-    function vestingFee() external view returns (IVoucher.VestingFee memory) {
+    function vestingFee() external view returns (IVoucherFactory.VestingFee memory) {
         return _fee;
     }
 
@@ -351,7 +351,7 @@ contract VemoVestingPool is IERC721Receiver {
     function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri) private {
         uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
-        IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
+        IVoucherFactory.VestingFee memory voucherFee = IVoucherFactory.VestingFee(
             _fee.isFee,
             _fee.feeTokenAddress,
             _fee.receiverAddress,
@@ -359,12 +359,12 @@ contract VemoVestingPool is IERC721Receiver {
             0
         );
 
-        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](_vestingSchedules.length);
+        IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](_vestingSchedules.length);
 
         uint256 scheduleLength = _vestingSchedules.length;
         for (uint8 i = 0; i < scheduleLength; i++) {
             uint256 vestingAmount = Math.mulDiv(amount, _vestingSchedules[i].amount, _token0Amount, Math.Rounding.Floor);
-            IVoucher.VestingSchedule memory schedule = IVoucher.VestingSchedule(
+            IVoucherFactory.VestingSchedule memory schedule = IVoucherFactory.VestingSchedule(
                 vestingAmount,
                 _vestingSchedules[i].vestingType,
                 _vestingSchedules[i].linearType,
@@ -377,7 +377,7 @@ contract VemoVestingPool is IERC721Receiver {
             schedules[i] = schedule;
         }
 
-        IVoucher.Vesting memory params = IVoucher.Vesting(
+        IVoucherFactory.Vesting memory params = IVoucherFactory.Vesting(
             amount,
             schedules,
             voucherFee
@@ -385,7 +385,7 @@ contract VemoVestingPool is IERC721Receiver {
 
         string[] memory tokenUris = new string[](1);
         tokenUris[0] = string.concat(_baseUrl, tokenUri);
-        IVoucher.BatchVesting memory batchVesting = IVoucher.BatchVesting(
+        IVoucherFactory.BatchVesting memory batchVesting = IVoucherFactory.BatchVesting(
             params,
             1,
             tokenUris

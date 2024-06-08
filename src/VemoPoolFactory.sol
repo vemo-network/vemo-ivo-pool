@@ -5,13 +5,14 @@ import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
-import {VemoVestingPool} from "./VemoVestingPool.sol";
-import "./VemoVestingPool.sol";
+import {VemoVestingPool} from "./pools/VemoVestingPool.sol";
+import {VemoFixedStakingPool} from "./pools/VemoFixedStakingPool.sol";
+
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
+contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     modifier onlyOwner() {

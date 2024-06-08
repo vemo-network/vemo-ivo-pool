@@ -4,12 +4,12 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin-contracts/utils/Strings.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/VemoVestingPool.sol";
-import "../src/VemoVestingPoolFactory.sol";
+import "../src/pools/VemoVestingPool.sol";
+import "../src/VemoPoolFactory.sol";
 import "./TestSetup.t.sol";
 
 contract VemoVestingPoolTest_NonWhitelist is TestSetup {
-    VemoVestingPoolFactory private factory;
+    VemoPoolFactory private factory;
 
     string private constant  baseUrl = "https://test.com";
     string private constant  baseUri = "https://test.com/test.png";
@@ -18,17 +18,17 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         super.setUp();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new VemoVestingPoolFactory();
-        factory.initialize(vm.addr(deployerPrivateKey), "VemoVestingPoolFactory", "0.1");
+        factory = new VemoPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "VemoPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         mockToken.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
 
-        console.log("VemoVestingPoolFactory Address: ", address(factory));
+        console.log("VemoPoolFactory Address: ", address(factory));
     }
 
     function generateParams() private view returns (CreateVestingPoolParams memory params) {
-        IVoucher.VestingSchedule memory vestingSchedule = IVoucher.VestingSchedule(
+        IVoucherFactory.VestingSchedule memory vestingSchedule = IVoucherFactory.VestingSchedule(
             1000000,
             1, // linear: 1 | staged: 2
             1,
@@ -38,10 +38,10 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
             1000000
         );
 
-        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](1);
+        IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
         schedules[0] = vestingSchedule;
 
-        IVoucher.VestingFee memory fee = IVoucher.VestingFee(
+        IVoucherFactory.VestingFee memory fee = IVoucherFactory.VestingFee(
             0,
             address(mockToken1),
             vm.addr(deployerPrivateKey),

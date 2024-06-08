@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import "../IVoucher.sol";
+import "./IVoucherFactory.sol";
 
 /**
  * CreateVestingPoolParams struct
@@ -33,8 +33,8 @@ import "../IVoucher.sol";
         bool flexibleAllocation;
         uint256 maxAllocationPerWallet;
         uint96 royaltyRate;
-        IVoucher.VestingSchedule[] schedules;
-        IVoucher.VestingFee fee;
+        IVoucherFactory.VestingSchedule[] schedules;
+        IVoucherFactory.VestingFee fee;
         string baseUrl;
         bytes32 root;
         uint256 startAt;

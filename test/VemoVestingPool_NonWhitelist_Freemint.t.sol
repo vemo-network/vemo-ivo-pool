@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/VemoVestingPool.sol";
-import "../src/VemoVestingPoolFactory.sol";
+import "../src/pools/VemoVestingPool.sol";
+import "../src/VemoPoolFactory.sol";
 import "./TestSetup.t.sol";
 
 contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
-    VemoVestingPoolFactory private factory;
+    VemoPoolFactory private factory;
 
     TestToken private _mockToken3;
 
@@ -19,15 +19,15 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
         _mockToken3.mint(vm.addr(deployerPrivateKey), 100000000000000000000);
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new VemoVestingPoolFactory();
-        factory.initialize(vm.addr(deployerPrivateKey), "VemoVestingPoolFactory", "0.1");
+        factory = new VemoPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "VemoPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         _mockToken3.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
     }
 
     function generateParams() private view returns (CreateVestingPoolParams memory params) {
-        IVoucher.VestingSchedule memory vestingSchedule = IVoucher.VestingSchedule(
+        IVoucherFactory.VestingSchedule memory vestingSchedule = IVoucherFactory.VestingSchedule(
             1000000,
             1, // linear: 1 | staged: 2
             1,
@@ -37,10 +37,10 @@ contract VemoVestingPoolTest_NonWhitelist2 is TestSetup {
             1000000
         );
 
-        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](1);
+        IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
         schedules[0] = vestingSchedule;
 
-        IVoucher.VestingFee memory fee = IVoucher.VestingFee(
+        IVoucherFactory.VestingFee memory fee = IVoucherFactory.VestingFee(
             0,
             address(_mockToken3),
             vm.addr(deployerPrivateKey),
