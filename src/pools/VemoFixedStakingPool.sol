@@ -10,6 +10,10 @@ import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
 import "../interfaces/IVemoFixedStakingPool.sol";
 import "../interfaces/IVoucherFactory.sol";
 
+interface IERC20Extented is IERC20 {
+    function decimals() external view returns (uint8);
+}
+
 // @title Moonsoon VestingPool
 contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
     using SafeERC20 for IERC20;
@@ -97,12 +101,14 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         require(amount > 0, "FIXED_STAKING_POOL: staking amount is zero");
         require(_stakedAmount[msg.sender] + amount <= maxAllocationPerWallets[periodIndex], "FIXED_STAKING_POOL: staked amount exceeds max allocation.");
         
-        _stake(amount, periodIndex, pTokenUri, yTokenUri);
+        (address pVoucher, address yVoucher) = _stake(amount, periodIndex, pTokenUri, yTokenUri);
 
         emit Deposit(
             msg.sender,
             address(this),
-            amount
+            amount,
+            pVoucher,
+            yVoucher
         );
     }
 
@@ -113,21 +119,36 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      * @param amount the amount staker want to stake
      * @param periodIndex the lock duration index 
      */
-    function _stake(uint256 amount, uint8 periodIndex, string memory pTokenUri, string memory yTokenUri) internal returns (uint256){
+    function _stake(uint256 amount, uint8 periodIndex, string memory pTokenUri, string memory yTokenUri) internal returns (address pVoucher, address yVoucher){
         uint256 rewardAmount = reward(amount, periodIndex);
 
         IERC20(principalToken).safeTransferFrom(msg.sender, address(this), amount);
-        (address pVoucher, address yVoucher) = _createStakingVouchers(amount, rewardAmount, periodIndex, pTokenUri, yTokenUri);
+        (pVoucher, yVoucher) = _createStakingVouchers(amount, rewardAmount, periodIndex, pTokenUri, yTokenUri);
 
         _stakedAmount[msg.sender] = _stakedAmount[msg.sender] + amount;
-
-        return rewardAmount;
     }
 
-    function reward(uint256 amount, uint8 _periodIndex) public returns (uint256) {
-        return (amount * rewardRates[_periodIndex] * stakingPeriods[_periodIndex]) / (365 days);
+    /**
+     * @dev calculate the reward need to pay,
+     * the rewardRate is decimal 18 we have to divide to 18
+     * @param amount the staking token amout in decimals
+     * @param _periodIndex staking period index
+     */    
+    function reward(uint256 amount, uint8 _periodIndex) public view returns (uint256) {
+        return (amount * rewardRates[_periodIndex] * stakingPeriods[_periodIndex]) * IERC20Extented(rewardToken).decimals() / 1e18;
     }
 
+    /**
+     * @dev lock the staking tokens and yield tokens into vouchers called pVoucher and yVoucher respectively
+     * 
+     * @param amount staking tokens amount
+     * @param rewardAmount expected reward amount
+     * @param periodIndex staking period index
+     * @param ptokenUri ptokenUri
+     * @param ytokenUri ytokenUri
+     * @return pVoucher tba address
+     * @return yVoucher tba address
+     */
     function _createStakingVouchers(uint256 amount, uint256 rewardAmount, uint8 periodIndex, string memory ptokenUri, string memory ytokenUri) private returns (address, address){
         uint256 period = stakingPeriods[periodIndex];
         IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
@@ -184,71 +205,8 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         tokenUris[0] = string.concat(baseUrl, ytokenUri);
         IERC20(rewardToken).approve(address(vemoVoucherFactory), rewardAmount);
         (address yVoucher, uint256 yVoucherId) = vemoVoucherFactory.createFor(rewardToken, vesting, msg.sender);
-    }
 
-    /**
-     * @notice get balance of an ERC20 token for the address `account`
-     *         - if the token address = 0x0 -> query native balance
-     *         - else use `balanceOf` function
-     * @param token address of the token
-     * @param account address of the account
-     */
-    function _getBalance(address token, address account) internal view returns (uint256) {
-        if (_isNative(token)) {
-            return account.balance;
-        } else {
-            return IERC20(token).balanceOf(account);
-        }
-    }
-
-    /**
-     * @notice determine if an address is a native token (0x0)
-     * @param token address of the token
-     */
-    function _isNative(address token) internal pure returns (bool) {
-        return (token == address(0));
-    }
-
-    /**
-     * @notice transfer ERC20 token from an address to another, including native if the `token` address is 0x0
-     * @param token address of the token
-     * @param from address of the sender
-     * @param to address of the receiver
-     * @param amount amount to be sent
-     */
-    function _doTransferERC20(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) internal {
-        require(from != to, 'sender != recipient');
-        if (amount > 0) {
-            if (_isNative(token)) {
-                if (from == address(this)) _safeTransferNative(to, amount);
-            } else {
-                if (from == address(this)) {
-                    IERC20(token).safeTransfer(
-                        to, amount
-                    );
-                } else {
-                    IERC20(token).safeTransferFrom(
-                        from, to, amount
-                    );
-                }
-            }
-        }
-    }
-
-    /**
-     * @notice safely transfer native token from this address
-     * @param to address of the receiver
-     * @param value amount to be sent
-     */
-    function _safeTransferNative(address to, uint256 value) internal {
-        if (value == 0) return;
-        (bool success,) = to.call{value: value}(new bytes(0));
-        require(success, 'TransferHelper: ETH_TRANSFER_FAILED');
+        return (pVoucher,  yVoucher);
     }
 
     /**

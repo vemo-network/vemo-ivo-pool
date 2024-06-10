@@ -9,8 +9,8 @@ import "./TestSetup.t.sol";
 
 contract VemoFixedStakingPoolTest is TestSetup {
     VemoPoolFactory private factory;
-    TestToken principalToken = mockToken;
-    TestToken rewardToken = mockToken1;
+    TestToken principalToken;
+    TestToken rewardToken;
 
     uint256 MONTH = 30 days;
     uint256[]  stakingPeriods = [MONTH* 3, MONTH * 6, MONTH * 9];
@@ -21,13 +21,18 @@ contract VemoFixedStakingPoolTest is TestSetup {
     uint256  totalReward = 10e18 + 100e18 + 1000e18;
     string baseURI = "https://vemo.fixed.staking.pool.com";
     uint256 duration = 60;
+
     function setUp() public override {
         super.setUp();
+        principalToken = new TestToken("test", "tst");
+        rewardToken = new TestToken("test1", "TEST1");
+
         vm.startPrank(deployerAddress);
         factory = new VemoPoolFactory();
         factory.initialize(deployerAddress, "VemoPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
-        mockToken.approve(address(factory), UINT256_MAX);
+
+        principalToken.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
     }
 
@@ -60,7 +65,7 @@ contract VemoFixedStakingPoolTest is TestSetup {
         pool = factory.createFixedStakingPool(params);
 
         assert(rewardToken.balanceOf(pool) == totalReward);
-        assert(VemoFixedStakingPool(pool).principalToken() == address(mockToken));
+        assert(VemoFixedStakingPool(pool).principalToken() == address(principalToken));
         assert(VemoFixedStakingPool(pool).rewardToken() == address(rewardToken));
         assert(VemoFixedStakingPool(pool).stakingPeriods(0) == stakingPeriods[0]);
         assert(VemoFixedStakingPool(pool).stakingPeriods(1) == stakingPeriods[1]);
@@ -77,8 +82,8 @@ contract VemoFixedStakingPoolTest is TestSetup {
     ) public {
         FixedStakingPool memory params = FixedStakingPool(
             1,
-            address(mockToken),
-            address(mockToken1),
+            address(principalToken),
+            address(rewardToken),
             _maxAllocations,
             _maxAllocationPerWallets,
             _rewardAmounts,
@@ -89,8 +94,8 @@ contract VemoFixedStakingPoolTest is TestSetup {
             block.timestamp + 120
         );
         vm.startPrank(deployerAddress);
-        mockToken1.mint(deployerAddress, totalReward);
-        mockToken1.approve(address(factory), totalReward);
+        rewardToken.mint(deployerAddress, totalReward);
+        rewardToken.approve(address(factory), totalReward);
 
         vm.expectRevert("Pool Factory: malform input");
         factory.createFixedStakingPool(params);
@@ -102,7 +107,9 @@ contract VemoFixedStakingPoolTest is TestSetup {
         FixedStakingPool memory params = generateParams();
 
         vm.startPrank(deployerAddress);
-        mockToken1.mint(deployerAddress, totalReward);
+        rewardToken.mint(deployerAddress, totalReward);
+        rewardToken.approve(address(factory), totalReward);
+
         address pool = factory.createFixedStakingPool(params);
         vm.stopPrank();
 
@@ -110,12 +117,26 @@ contract VemoFixedStakingPoolTest is TestSetup {
 
         vm.startPrank(buyerAddress);
         uint256 stakingAmount = 100;
-        mockToken.mint(buyerAddress, stakingAmount);
-        mockToken.approve(pool, stakingAmount);
+        uint8 stakingPeriodIndex = 0;
+        uint256 expectedReward = VemoFixedStakingPool(pool).reward(stakingAmount, stakingPeriodIndex);
+        console.log("expectedReward ", expectedReward);
 
-        console.log("mockToken ", address(mockToken));
-        console.log("buyerAddress ", address(buyerAddress));
-        VemoFixedStakingPool(pool).stake(stakingAmount, 0, baseURI, baseURI);
+        principalToken.mint(buyerAddress, stakingAmount);
+        principalToken.approve(pool, stakingAmount);
+
+        VemoFixedStakingPool(pool).stake(stakingAmount, stakingPeriodIndex, baseURI, baseURI);
+        
+        uint256 pVoucherId = voucher.nftID() - 2;
+        uint256 yVoucherId = voucher.nftID() - 1;
+
+        console.log(
+            voucher.getTokenBoundAccount(address(principalToken), pVoucherId),
+            voucher.getTokenBoundAccount(address(rewardToken), yVoucherId)
+        );
+        assert(voucher.ownerOf(pVoucherId) == buyerAddress);
+        assert(principalToken.balanceOf(voucher.getTokenBoundAccount(address(principalToken), pVoucherId) ) == stakingAmount);
+        assert(voucher.ownerOf(yVoucherId) == buyerAddress);
+        assert(rewardToken.balanceOf(voucher.getTokenBoundAccount(address(rewardToken), yVoucherId) ) == expectedReward);
         vm.stopPrank();
     }
 
@@ -147,8 +168,8 @@ contract VemoFixedStakingPoolTest is TestSetup {
         FixedStakingPool memory params = generateParams();
 
         vm.startPrank(deployerAddress);
-        mockToken1.mint(deployerAddress, totalReward);
-        mockToken1.approve(address(factory), totalReward);
+        rewardToken.mint(deployerAddress, totalReward);
+        rewardToken.approve(address(factory), totalReward);
 
         address pool = factory.createFixedStakingPool(params);
 
@@ -160,7 +181,4 @@ contract VemoFixedStakingPoolTest is TestSetup {
         vm.stopPrank();
     }
 
-    function test_poolEnded() public {
-        assert(true == false);
-    }
 }

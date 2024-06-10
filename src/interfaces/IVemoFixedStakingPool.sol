@@ -34,7 +34,9 @@ interface IVemoFixedStakingPool {
     event Deposit(
         address indexed _user,
         address indexed _stakingToken,
-        uint256 _amount
+        uint256 _amount,
+        address pVoucher,
+        address yVoucher
     );
 
     event UpdatePoolAllocation(
