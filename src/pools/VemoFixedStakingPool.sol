@@ -10,10 +10,6 @@ import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
 import "../interfaces/IVemoFixedStakingPool.sol";
 import "../interfaces/IVoucherFactory.sol";
 
-interface IERC20Extented is IERC20 {
-    function decimals() external view returns (uint8);
-}
-
 // @title Moonsoon VestingPool
 contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
     using SafeERC20 for IERC20;
@@ -37,15 +33,16 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
     address public rewardToken;
 
     // expect total amount of token1
-    uint256[] public maxAllocations;
+    uint256[] public _maxAllocations;
+    uint256[] public _stakedAmounts;
 
     // Max allocation per wallet
-    uint256[] public maxAllocationPerWallets;
+    uint256[] public _maxAllocationPerWallets;
 
-    uint256[] public stakingPeriods;  // ie [1 month, 3 months, 6 months, 2 years] by seconds
-    uint256[] public rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
+    uint256[] public _stakingPeriods;  // ie [1 month, 3 months, 6 months, 2 years] by seconds
+    uint256[] public _rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
 
-    mapping(address => uint256) private _stakedAmount;
+    mapping(uint8 => mapping(address => uint256)) private _userStaked;
 
     constructor(FixedStakingPool memory vestingPool, address _voucherFactory, address _operator) {
         operator = _operator;
@@ -55,19 +52,28 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         require(vestingPool.principalToken != address(0), "staking native token is not supported");
         require(vestingPool.rewardToken != address(0), "staking native token is not supported");
 
+        _stakedAmounts = new uint256[](vestingPool.maxAllocations.length);
         principalToken = vestingPool.principalToken;
         rewardToken = vestingPool.rewardToken;
-        maxAllocations = vestingPool.maxAllocations;
-        maxAllocationPerWallets = vestingPool.maxAllocationPerWallets;
+        _maxAllocations = vestingPool.maxAllocations;
+        _maxAllocationPerWallets = vestingPool.maxAllocationPerWallets;
         startTime = vestingPool.startAt;
         endTime = vestingPool.endAt;
         vemoVoucherFactory = IVoucherFactory(_voucherFactory);
         baseUrl = vestingPool.baseUrl;
-        rewardRates = vestingPool.rewardRates;
-        stakingPeriods = vestingPool.stakingPeriods;
+        _rewardRates = vestingPool.rewardRates;
+        _stakingPeriods = vestingPool.stakingPeriods;
 
     }
 
+    modifier onlyOperator() {
+        _onlyOperator();
+        _;
+    }
+
+    function _onlyOperator() internal view {
+        require(msg.sender == operator || msg.sender == address(this), "only operator");
+    }
 
     /**
      * @dev set the operator address
@@ -82,8 +88,8 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      * @notice public function to return the amount staked by a staker
      * @param staker address of the staker
      */
-    function stakedAmount(address staker) external view override returns (uint256){
-        return _stakedAmount[staker];
+    function staked(uint8 periodIndex, address staker) external view override returns (uint256){
+        return _userStaked[periodIndex][staker];
     }
 
 
@@ -95,11 +101,12 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      * @param yTokenUri the token uri used for the yield voucher.
      */
     function stake(uint256 amount, uint8 periodIndex,  string memory pTokenUri, string memory yTokenUri) external {
-        require(periodIndex < stakingPeriods.length, "FIXED_STAKING_POOL: out of range");
+        require(periodIndex < _stakingPeriods.length, "FIXED_STAKING_POOL: out of range");
         require(block.timestamp <= endTime, "FIXED_STAKING_POOL: the staking pool has ended");
         require(block.timestamp >= startTime, "FIXED_STAKING_POOL: the staking pool has not started yet");
         require(amount > 0, "FIXED_STAKING_POOL: staking amount is zero");
-        require(_stakedAmount[msg.sender] + amount <= maxAllocationPerWallets[periodIndex], "FIXED_STAKING_POOL: staked amount exceeds max allocation.");
+        require(_stakedAmounts[periodIndex] + amount <= _maxAllocations[periodIndex], "FIXED_STAKING_POOL: staked amount exceeds max allocation");
+        require(_userStaked[periodIndex][msg.sender] + amount <= _maxAllocationPerWallets[periodIndex], "FIXED_STAKING_POOL: staked amount exceeds max allocation");
         
         (address pVoucher, address yVoucher) = _stake(amount, periodIndex, pTokenUri, yTokenUri);
 
@@ -125,17 +132,18 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         IERC20(principalToken).safeTransferFrom(msg.sender, address(this), amount);
         (pVoucher, yVoucher) = _createStakingVouchers(amount, rewardAmount, periodIndex, pTokenUri, yTokenUri);
 
-        _stakedAmount[msg.sender] = _stakedAmount[msg.sender] + amount;
+        _stakedAmounts[periodIndex] = _stakedAmounts[periodIndex] + amount;
+        _userStaked[periodIndex][msg.sender] = _userStaked[periodIndex][msg.sender] + amount;
     }
 
     /**
      * @dev calculate the reward need to pay,
      * the rewardRate is decimal 18 we have to divide to 18
      * @param amount the staking token amout in decimals
-     * @param _periodIndex staking period index
+     * @param periodIndex staking period index
      */    
-    function reward(uint256 amount, uint8 _periodIndex) public view returns (uint256) {
-        return (amount * rewardRates[_periodIndex] * stakingPeriods[_periodIndex]) * IERC20Extented(rewardToken).decimals() / 1e18;
+    function reward(uint256 amount, uint8 periodIndex) public view returns (uint256) {
+        return (amount * _rewardRates[periodIndex]) * IERC20Extented(rewardToken).decimals() / 1e18 / IERC20Extented(principalToken).decimals();
     }
 
     /**
@@ -150,7 +158,7 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      * @return yVoucher tba address
      */
     function _createStakingVouchers(uint256 amount, uint256 rewardAmount, uint8 periodIndex, string memory ptokenUri, string memory ytokenUri) private returns (address, address){
-        uint256 period = stakingPeriods[periodIndex];
+        uint256 period = _stakingPeriods[periodIndex];
         IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
         IVoucherFactory.VestingFee memory voucherFee = IVoucherFactory.VestingFee(
             0,
@@ -207,6 +215,27 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         (address yVoucher, uint256 yVoucherId) = vemoVoucherFactory.createFor(rewardToken, vesting, msg.sender);
 
         return (pVoucher,  yVoucher);
+    }
+
+    function adjustAllocation(uint8 periodIndex, uint256 newAllo) public onlyOperator {
+        require(newAllo >= _stakedAmounts[periodIndex], "FIXED_STAKING_POOL: allocation is lower than staked amount");
+        uint256 currentReward = reward(_maxAllocations[periodIndex], periodIndex);
+        uint256 newReward = reward(newAllo, periodIndex);
+
+        // deposit more reward
+        if (newAllo > _maxAllocations[periodIndex]) {
+            IERC20(rewardToken).safeTransferFrom(
+                msg.sender, address(this), newReward - currentReward
+            );
+        } else {
+            IERC20(rewardToken).safeTransfer(
+                msg.sender, currentReward - newReward
+            );
+        }
+
+        _maxAllocations[periodIndex] = newAllo;
+
+        emit UpdatePoolAllocation(periodIndex, newAllo);
     }
 
     /**

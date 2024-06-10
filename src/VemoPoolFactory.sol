@@ -156,19 +156,17 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     function createFixedStakingPool(FixedStakingPool calldata params) external returns (address) {
         bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.principalToken, params.rewardToken));
         require(params.maxAllocations.length > 0 && params.maxAllocationPerWallets.length == params.maxAllocations.length &&
-                params.maxAllocationPerWallets.length == params.rewardAmounts.length &&
-                params.stakingPeriods.length == params.rewardAmounts.length && 
+                params.stakingPeriods.length == params.maxAllocationPerWallets.length && 
                 params.rewardRates.length == params.stakingPeriods.length, "Pool Factory: malform input");
         require(_poolByHash[poolHash] == address(0), "Pool Factory: pool is already deployed.");
         
         uint256 totalReward = 0;
-        for (uint i = 0; i < params.rewardAmounts.length; i++) {
+        for (uint i = 0; i < params.stakingPeriods.length; i++) {
             require(params.stakingPeriods[i] > 0);
-            require(params.rewardAmounts[i] > 0);
             require(params.maxAllocationPerWallets[i] > 0);
             require(params.maxAllocations[i] > 0);
             require(params.rewardRates[i] > 0);
-            totalReward += params.rewardAmounts[i];
+            totalReward += (params.maxAllocations[i] * params.rewardRates[i]) * IERC20Extented(params.rewardToken).decimals() / 1e18 / IERC20Extented(params.principalToken).decimals();
         }
 
         require(totalReward > 0, "Pool Factory: reward token amount is zero");

@@ -2,6 +2,11 @@
 pragma solidity ^0.8.13;
 
 import "./IVoucherFactory.sol";
+import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
+
+interface IERC20Extented is IERC20 {
+    function decimals() external view returns (uint8);
+}
 
 /**
  * CreateVestingPoolParams struct
@@ -22,7 +27,6 @@ struct FixedStakingPool {
     address rewardToken;
     uint256[] maxAllocations;
     uint256[] maxAllocationPerWallets;
-    uint256[] rewardAmounts;
     uint256[] stakingPeriods;
     uint256[] rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
     string baseUrl;
@@ -40,17 +44,11 @@ interface IVemoFixedStakingPool {
     );
 
     event UpdatePoolAllocation(
-        address indexed _stakingToken,
+        uint8 _id,
         uint256 _newAllocation
     );
 
-    event UpdatePoolRewards(
-        address indexed _stakingToken,
-        uint256[] _newPeriods,
-        uint256[] _newRates
-    );
-
-    function stakedAmount(address user) external returns (uint256);
+    function staked(uint8 periodIndex, address staker) external returns (uint256);
 
     // function adjustAllocation(uint256 _newAllo) external;
 
