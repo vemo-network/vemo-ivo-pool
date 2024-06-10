@@ -20,9 +20,6 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
     // Voucher base url
     string public baseUrl;
 
-    // Address of the voucher which will be issued by this pool
-    address public voucherAddress;
-
     // Vemo voucher
     IVoucherFactory public vemoVoucherFactory;
 
@@ -36,24 +33,17 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
     address public rewardToken;
 
     // expect total amount of token1
-    uint256 public maxAllocation;
+    uint256[] public maxAllocations;
 
     // Max allocation per wallet
-    uint256 public maxAllocationPerWallet;
+    uint256[] public maxAllocationPerWallets;
 
-    // Royalty rate for voucher created from this vesting pool
-    uint96 private _royaltyRate;
-
-    // voucher unlock schedules and fee
-    // IVoucherFactory.VestingSchedule[] public vestingSchedules;
-    IVoucherFactory.VestingFee public claimFee;
-
-    uint256[] rewardPeriods;  // ie [1 month, 3 months, 6 months, 2 years] by seconds
-    uint256[] rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
+    uint256[] public stakingPeriods;  // ie [1 month, 3 months, 6 months, 2 years] by seconds
+    uint256[] public rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
 
     mapping(address => uint256) private _stakedAmount;
 
-    constructor(FixedStakingPool memory vestingPool, address voucherFactory, address _operator) {
+    constructor(FixedStakingPool memory vestingPool, address _voucherFactory, address _operator) {
         operator = _operator;
 
         require(block.timestamp < vestingPool.startAt, "start time is in the past");
@@ -63,17 +53,14 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
 
         principalToken = vestingPool.principalToken;
         rewardToken = vestingPool.rewardToken;
-        maxAllocation = vestingPool.maxAllocation;
-        maxAllocationPerWallet = vestingPool.maxAllocationPerWallet;
-        // _royaltyRate = vestingPool.royaltyRate;
+        maxAllocations = vestingPool.maxAllocations;
+        maxAllocationPerWallets = vestingPool.maxAllocationPerWallets;
         startTime = vestingPool.startAt;
         endTime = vestingPool.endAt;
-        voucherAddress = voucherFactory;
-        vemoVoucherFactory = IVoucherFactory(voucherFactory);
-        claimFee = vestingPool.fee;
+        vemoVoucherFactory = IVoucherFactory(_voucherFactory);
         baseUrl = vestingPool.baseUrl;
         rewardRates = vestingPool.rewardRates;
-        rewardPeriods = vestingPool.rewardPeriods;
+        stakingPeriods = vestingPool.stakingPeriods;
 
     }
 
@@ -95,13 +82,6 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         return _stakedAmount[staker];
     }
 
-    /**
-     * @dev get royalty rate
-     */
-    function royaltyRate() external view returns (uint96) {
-        return _royaltyRate;
-    }
-
 
     /**
      * @notice function to stake principal token
@@ -110,13 +90,14 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      * @param pTokenUri the token uri used for the principal voucher.
      * @param yTokenUri the token uri used for the yield voucher.
      */
-    function stake(uint256 amount, uint256 period,  string memory pTokenUri, string memory yTokenUri) external payable {
-        require(block.timestamp <= endTime, "the staking pool has ended");
-        require(block.timestamp >= startTime, "the staking pool has not started yet");
-        require(amount > 0, "staking amount is zero");
-        require(_stakedAmount[msg.sender] + amount <= maxAllocationPerWallet, "staked amount exceeds max allocation.");
+    function stake(uint256 amount, uint8 periodIndex,  string memory pTokenUri, string memory yTokenUri) external {
+        require(periodIndex < stakingPeriods.length, "FIXED_STAKING_POOL: out of range");
+        require(block.timestamp <= endTime, "FIXED_STAKING_POOL: the staking pool has ended");
+        require(block.timestamp >= startTime, "FIXED_STAKING_POOL: the staking pool has not started yet");
+        require(amount > 0, "FIXED_STAKING_POOL: staking amount is zero");
+        require(_stakedAmount[msg.sender] + amount <= maxAllocationPerWallets[periodIndex], "FIXED_STAKING_POOL: staked amount exceeds max allocation.");
         
-        _stake(amount, period, pTokenUri, yTokenUri);
+        _stake(amount, periodIndex, pTokenUri, yTokenUri);
 
         emit Deposit(
             msg.sender,
@@ -130,39 +111,25 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
      *          - transfer the amount of `token1` to this pool
      *          - increase the allocation info of the staker
      * @param amount the amount staker want to stake
-     * @param lockTime the lock duration
+     * @param periodIndex the lock duration index 
      */
-    function _stake(uint256 amount, uint256 lockTime, string memory pTokenUri, string memory yTokenUri) internal returns (uint256){
-        uint256 rewardAmount = _reward(amount, lockTime);
+    function _stake(uint256 amount, uint8 periodIndex, string memory pTokenUri, string memory yTokenUri) internal returns (uint256){
+        uint256 rewardAmount = reward(amount, periodIndex);
 
         IERC20(principalToken).safeTransferFrom(msg.sender, address(this), amount);
-        // IERC20(rewardToken).safeTransfer(address(this), yVoucher, rewardAmount);
-
-        (address pVoucher, address yVoucher) = _createStakingVouchers(amount, rewardAmount, lockTime, pTokenUri, yTokenUri);
+        (address pVoucher, address yVoucher) = _createStakingVouchers(amount, rewardAmount, periodIndex, pTokenUri, yTokenUri);
 
         _stakedAmount[msg.sender] = _stakedAmount[msg.sender] + amount;
 
         return rewardAmount;
     }
 
-    function _reward(uint256 amount, uint256 _lockTime) internal returns (uint256) {
-        return (amount * rewardRate(_lockTime) * _lockTime) / (365 days);
+    function reward(uint256 amount, uint8 _periodIndex) public returns (uint256) {
+        return (amount * rewardRates[_periodIndex] * stakingPeriods[_periodIndex]) / (365 days);
     }
 
-    function rewardRate(uint256 _period) public view returns (uint256) {
-        uint256 rateIndex = 0;
-        for (uint i = 0; i < rewardPeriods.length; i++) {
-            if (_period >= rewardPeriods[i]) {
-                rateIndex = i;
-                break;
-            }
-        }
-
-        require(rateIndex < rewardRates.length, "StakingPool: Invalid period");
-        return rewardRates[rateIndex];
-    }
-
-    function _createStakingVouchers(uint256 amount, uint256 rewardAmount, uint256 period, string memory ptokenUri, string memory ytokenUri) private returns (address, address){
+    function _createStakingVouchers(uint256 amount, uint256 rewardAmount, uint8 periodIndex, string memory ptokenUri, string memory ytokenUri) private returns (address, address){
+        uint256 period = stakingPeriods[periodIndex];
         IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
         IVoucherFactory.VestingFee memory voucherFee = IVoucherFactory.VestingFee(
             0,
@@ -191,10 +158,11 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
 
         string[] memory tokenUris = new string[](1);
         tokenUris[0] = string.concat(baseUrl, ptokenUri);
+        
         IERC20(principalToken).approve(address(vemoVoucherFactory), amount);
+
         (address pVoucher, uint256 pVoucherId) = vemoVoucherFactory.createFor(principalToken, vesting, msg.sender);
         
-
         // create yield voucher
         schedules[0] = IVoucherFactory.VestingSchedule(
                 amount,
@@ -214,7 +182,7 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
 
         tokenUris = new string[](1);
         tokenUris[0] = string.concat(baseUrl, ytokenUri);
-        IERC20(rewardToken).approve(address(vemoVoucherFactory), amount);
+        IERC20(rewardToken).approve(address(vemoVoucherFactory), rewardAmount);
         (address yVoucher, uint256 yVoucherId) = vemoVoucherFactory.createFor(rewardToken, vesting, msg.sender);
     }
 
@@ -282,8 +250,6 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         (bool success,) = to.call{value: value}(new bytes(0));
         require(success, 'TransferHelper: ETH_TRANSFER_FAILED');
     }
-
-    receive() external payable {}
 
     /**
    * @dev allow the project to receive an {AssetOwnership} token

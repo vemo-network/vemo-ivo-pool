@@ -7,6 +7,7 @@ import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
 import {VemoVestingPool} from "./pools/VemoVestingPool.sol";
 import {VemoFixedStakingPool} from "./pools/VemoFixedStakingPool.sol";
+import "./interfaces/IVemoFixedStakingPool.sol";
 
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
@@ -152,6 +153,42 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         return payable(address(vestingPool));
     }
 
+    function createFixedStakingPool(FixedStakingPool calldata params) external returns (address) {
+        bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.principalToken, params.rewardToken));
+        require(params.maxAllocations.length > 0 && params.maxAllocationPerWallets.length == params.maxAllocations.length &&
+                params.maxAllocationPerWallets.length == params.rewardAmounts.length &&
+                params.stakingPeriods.length == params.rewardAmounts.length && 
+                params.rewardRates.length == params.stakingPeriods.length, "Pool Factory: malform input");
+        require(_poolByHash[poolHash] == address(0), "Pool Factory: pool is already deployed.");
+        
+        uint256 totalReward = 0;
+        for (uint i = 0; i < params.rewardAmounts.length; i++) {
+            require(params.stakingPeriods[i] > 0);
+            require(params.rewardAmounts[i] > 0);
+            require(params.maxAllocationPerWallets[i] > 0);
+            require(params.maxAllocations[i] > 0);
+            require(params.rewardRates[i] > 0);
+            totalReward += params.rewardAmounts[i];
+        }
+
+        require(totalReward > 0, "Pool Factory: reward token amount is zero");
+
+        VemoFixedStakingPool stakingPool = new VemoFixedStakingPool(params, _voucher, msg.sender);
+
+        IERC20(params.rewardToken).safeTransferFrom(
+            msg.sender, address(stakingPool), totalReward
+        );
+
+        _poolByHash[poolHash] = address(stakingPool);
+
+        emit FixedStakingPoolCreated(
+            address(stakingPool),
+            msg.sender
+        );
+
+        return address(stakingPool);
+    }
+
     function _authorizeUpgrade(address newImplementation) internal view override {
         (newImplementation);
         _onlyOwner();
@@ -160,4 +197,9 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     function getToken1(address payable pool, uint256 amount) public returns (uint256) {
         return VemoVestingPool(pool).token1Amount(amount);
     }
+
+    event FixedStakingPoolCreated(
+        address indexed pool,
+        address owner
+    );
 }

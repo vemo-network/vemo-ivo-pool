@@ -20,12 +20,11 @@ struct FixedStakingPool {
     uint256 poolId;
     address principalToken;
     address rewardToken;
-    uint256 maxAllocation;
-    uint256 maxAllocationPerWallet;
-    uint256[] rewardPeriods;
+    uint256[] maxAllocations;
+    uint256[] maxAllocationPerWallets;
+    uint256[] rewardAmounts;
+    uint256[] stakingPeriods;
     uint256[] rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
-    IVoucherFactory.VestingSchedule[] schedules;
-    IVoucherFactory.VestingFee fee;
     string baseUrl;
     uint256 startAt;
     uint256 endAt;
@@ -50,8 +49,6 @@ interface IVemoFixedStakingPool {
     );
 
     function stakedAmount(address user) external returns (uint256);
-
-    function rewardRate(uint period) external returns (uint256);
 
     // function adjustAllocation(uint256 _newAllo) external;
 
