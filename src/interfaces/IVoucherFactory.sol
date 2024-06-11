@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 interface IVoucherFactory {
     // data schemas
-
     struct VestingSchedule {
         uint256 amount;
         uint8 vestingType; // linear: 1 | staged: 2

@@ -192,10 +192,6 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         _onlyOwner();
     }
 
-    function getToken1(address payable pool, uint256 amount) public returns (uint256) {
-        return VemoVestingPool(pool).token1Amount(amount);
-    }
-
     event FixedStakingPoolCreated(
         address indexed pool,
         address owner

@@ -21,7 +21,8 @@ contract VemoFixedStakingPoolTest is TestSetup {
     uint256  totalReward = 0;
     string baseURI = "https://vemo.fixed.staking.pool.com";
     uint256 duration = 60;
-
+    IVoucherFactory.VestingSchedule rewardVestingSchedule;
+    
     function setUp() public override {
         super.setUp();
         principalToken = new TestToken("test", "tst");
@@ -42,6 +43,18 @@ contract VemoFixedStakingPoolTest is TestSetup {
             require(rewardRates[i] > 0);
             totalReward += (maxAllocations[i] * rewardRates[i]) * rewardToken.decimals() / 1e18 / principalToken.decimals();
         }
+
+
+        // create principal voucher
+        rewardVestingSchedule = IVoucherFactory.VestingSchedule(
+                0,
+                2, // linear: 1 | staged: 2
+                1, // day: 1 | week: 2 | month: 3 | quarter: 4
+                block.timestamp,
+                block.timestamp,
+                0,
+                0
+        );
     }
 
     function generateParams() private view returns (FixedStakingPool memory params) {
@@ -53,6 +66,7 @@ contract VemoFixedStakingPoolTest is TestSetup {
             maxAllocationPerWallets,
             stakingPeriods,
             rewardRates,
+            rewardVestingSchedule,
             baseURI,
             block.timestamp + duration,
             block.timestamp + duration*2
@@ -71,8 +85,7 @@ contract VemoFixedStakingPoolTest is TestSetup {
 
         pool = factory.createFixedStakingPool(params);
 
-        console.log("rewardToken.balanceOf(pool) ", rewardToken.balanceOf(pool));
-        // assert(rewardToken.balanceOf(pool) == totalReward);
+        assert(rewardToken.balanceOf(pool) == totalReward);
         assert(VemoFixedStakingPool(pool).principalToken() == address(principalToken));
         assert(VemoFixedStakingPool(pool).rewardToken() == address(rewardToken));
         vm.stopPrank();
@@ -92,6 +105,7 @@ contract VemoFixedStakingPoolTest is TestSetup {
             _maxAllocationPerWallets,
             _stakingPeriods,
             _rewardRates,
+            rewardVestingSchedule,
             baseURI,
             block.timestamp + 60,
             block.timestamp + 120
@@ -149,7 +163,6 @@ contract VemoFixedStakingPoolTest is TestSetup {
         vm.stopPrank();
 
         skip(duration);
-        console.log("total reward ", rewardToken.balanceOf(pool));
 
         vm.startPrank(buyerAddress);
         uint256 stakingAmount = 100;

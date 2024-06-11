@@ -12,12 +12,11 @@ interface IERC20Extented is IERC20 {
  * CreateVestingPoolParams struct
  * @param principalToken            - The address of staking token
  * @param rewardToken               - The address of reward token
- * @param maxAllocation             - Maximum amount of staking token
- * @param rewardRates               - The reward rates  = (number of reward tokens without decimals) per 1 staking token - without decimals - decimals 18
- * @param maxAllocation             - Maximum amount of staking tokne
- * @param maxAllocationPerWallet    - max allocation (bought) amount that a wallet can participate in this pool
- * @param royaltyRate               - royalty rate of the vesting voucher
- * @param fee                       - vesting fee
+ * @param maxAllocations            - Maximum amount of staking tokne
+ * @param maxAllocationPerWallets   - max allocation (bought) amount that a wallet can participate in this pool
+ * @param rewardSchedule            - struct defines the schedule unlocking reward token
+ * @param stakingPeriods            - array defines staking periods options
+ * @param rewardRates               - array defines rewardrate with unit is RewardToken(no decimals)/StakingToken(no decimals) -  decimals 18
  * @param baseUrl                   - Base Url for Voucher created by this pool
  
 */
@@ -29,6 +28,7 @@ struct FixedStakingPool {
     uint256[] maxAllocationPerWallets;
     uint256[] stakingPeriods;
     uint256[] rewardRates;  // ie [1e17, 2e18, 5e18, 1e18] ~ 0.1 , 2, 5, 10 per year
+    IVoucherFactory.VestingSchedule rewardSchedule; 
     string baseUrl;
     uint256 startAt;
     uint256 endAt;
@@ -39,8 +39,10 @@ interface IVemoFixedStakingPool {
         address indexed _user,
         address indexed _stakingToken,
         uint256 _amount,
-        address pVoucher,
-        address yVoucher
+        address pVoucherNFT,
+        address yVoucherNFT,
+        uint256 pVoucherId,
+        uint256 yVoucherId
     );
 
     event UpdatePoolAllocation(
@@ -50,7 +52,7 @@ interface IVemoFixedStakingPool {
 
     function staked(uint8 periodIndex, address staker) external returns (uint256);
 
-    // function adjustAllocation(uint256 _newAllo) external;
+    function adjustAllocation(uint8 periodIndex, uint256 newAllo) external;
 
-    // function adjustRewards(uint256[] memory _newPeriods, uint256[] memory _newRates) external;
+    function reward(uint256 amount, uint8 periodIndex) external returns (uint256);
 }

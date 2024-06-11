@@ -51,23 +51,22 @@ contract TestVoucher is IVoucherFactory, ERC721, Test {
         uint96 royaltyRate,
         address receiver
     ) public returns (address, uint256, uint256) {
-        address tba = vm.addr(tbaIndex++);
-        _tbaNftMap[tokenAddress][nftID] = tba;
-
-        _safeMint(receiver, nftID++);
-
-        IERC20(tokenAddress).safeTransferFrom(
-            msg.sender, address(this), batch.vesting.balance
-        );
-
         uint256 startId = nftID - 1;
         for (uint256 i = startId; i < startId + batch.quantity; i++) {
             _feeByTokenId[i] = batch.vesting.fee;
             for (uint8 j = 0; j < batch.vesting.schedules.length; j++)
                 _vestingScheduleByTokenId[i].push(batch.vesting.schedules[j]);
+            
+            address tba = vm.addr(tbaIndex++);
+            _tbaNftMap[tokenAddress][nftID] = tba;
+
+            _safeMint(receiver, nftID++);
+            IERC20(tokenAddress).safeTransferFrom(
+                msg.sender, tba, batch.vesting.balance
+            );
         }
 
-        return (address(this), startId, startId + batch.quantity - 1);
+        return (tokenAddress, startId, startId + batch.quantity - 1);
     }
 
     function createBatch(
@@ -111,6 +110,6 @@ contract TestVoucher is IVoucherFactory, ERC721, Test {
         _feeByTokenId[0] = vesting.fee;
         _vestingScheduleByTokenId[0].push(vesting.schedules[0]);
 
-        return (tba, nftID);
+        return (tokenAddress, nftID);
     }
 }
