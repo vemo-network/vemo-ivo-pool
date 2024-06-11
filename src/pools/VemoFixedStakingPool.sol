@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin-contracts/utils/math/Math.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
 import "../interfaces/IVemoFixedStakingPool.sol";
 import "../interfaces/IVoucherFactory.sol";
+import "../interfaces/IVemoPool.sol";
 
-// @title Moonsoon VestingPool
-contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
+contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool, IVemoPool {
     using SafeERC20 for IERC20;
 
     // Operator address
@@ -45,7 +42,9 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
 
     mapping(uint8 => mapping(address => uint256)) private _userStaked;
 
-    constructor(FixedStakingPool memory vestingPool, address _voucherFactory, address _operator) {
+    function initialize(FixedStakingPool memory vestingPool, address _voucherFactory, address _operator) external {
+        require(address(vemoVoucherFactory) == address(0), "initialize once");
+
         operator = _operator;
 
         require(block.timestamp < vestingPool.startAt, "start time is in the past");
@@ -258,6 +257,11 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         return (pVoucherNFT,  yVoucherNFT, pVoucherId, yVoucherId);
     }
 
+    /**
+     * @dev adjust the maximum staking allocation for each period
+     * @param periodIndex staking period index
+     * @param newAllo new allocation
+     */
     function adjustAllocation(uint8 periodIndex, uint256 newAllo) public onlyOperator {
         require(newAllo >= stakedAmounts[periodIndex], "FIXED_STAKING_POOL: allocation is lower than staked amount");
         uint256 currentReward = reward(maxAllocations[periodIndex], periodIndex);
@@ -277,6 +281,18 @@ contract VemoFixedStakingPool is IERC721Receiver, IVemoFixedStakingPool {
         maxAllocations[periodIndex] = newAllo;
 
         emit UpdatePoolAllocation(periodIndex, newAllo);
+    }
+
+    function token0() external view returns (address) {
+        return principalToken;
+    }
+    
+    function token1() external view returns (address) {
+        return rewardToken;
+    }
+
+    function version() public pure override returns (string memory) {
+        return "0.1";
     }
 
     /**

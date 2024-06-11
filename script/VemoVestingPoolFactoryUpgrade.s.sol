@@ -1,24 +1,26 @@
-//// SPDX-License-Identifier: UNLICENSED
-//pragma solidity ^0.8.13;
-//
-//import {Script, console2} from "forge-std/Script.sol";
-//import "../src/MoonsoonVestingPoolFactoryV5.sol";
-//import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-//
-//contract MoonsoonVestingPoolFactoryUpgradeScript is Script {
-//    function setUp() public {}
-//
-//    function run() public {
-//        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-//        vm.startBroadcast(deployerPrivateKey);
-//        Options memory opts;
-//        opts.referenceContract = "MoonsoonVestingPoolFactoryV5.sol";
-//        Upgrades.upgradeProxy(
-//            0x5ef5D34bcbCefdFa6442aD7672a4147A98C08698,
-//            "MoonsoonVestingPoolFactoryV6.sol",
-//            "",
-//            opts
-//        );
-//        vm.stopBroadcast();
-//    }
-//}
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+import {Script, console2} from "forge-std/Script.sol";
+import "../src/VemoPoolFactory.sol";
+import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+contract PoolFactoryUpgradeScript is Script {
+   function setUp() public {}
+
+   function run() public {
+       uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+       address proxyAddress = vm.envAddress("POOL_FACTORY");
+
+       vm.startBroadcast(deployerPrivateKey);
+        VemoPoolFactory proxy = VemoPoolFactory(payable(proxyAddress));
+        VemoPoolFactory newImplementation = new VemoPoolFactory();
+
+        bytes memory data;
+        // Upgrade the implementation
+        proxy.upgradeToAndCall(address(newImplementation), data);
+
+       vm.stopBroadcast();
+   }
+}

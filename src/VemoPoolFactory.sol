@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
 import {VemoVestingPool} from "./pools/VemoVestingPool.sol";
-import {VemoFixedStakingPool} from "./pools/VemoFixedStakingPool.sol";
 import "./interfaces/IVemoFixedStakingPool.sol";
+import "./interfaces/IVemoFixedStakingPool.sol";
+import "./interfaces/IPoolImplManager.sol";
+
+import "./pools/PoolProxy.sol";
 
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
+contract VemoPoolFactory is UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     modifier onlyOwner() {
@@ -52,7 +52,6 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     );
 
     function initialize(address anOwner, string memory name_, string memory version_) public virtual initializer {
-        __EIP712_init(name_, version_);
         _initialize(anOwner);
     }
 
@@ -153,7 +152,9 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         return payable(address(vestingPool));
     }
 
-    function createFixedStakingPool(FixedStakingPool calldata params) external returns (address) {
+    function createFixedStakingPool(address impl, FixedStakingPool calldata params) external returns (address) {
+        require(_guardian.isImplWhitelisted(impl), "nonwhitelisted impl");
+
         bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.principalToken, params.rewardToken));
         require(params.maxAllocations.length > 0 && params.maxAllocationPerWallets.length == params.maxAllocations.length &&
                 params.stakingPeriods.length == params.maxAllocationPerWallets.length && 
@@ -171,20 +172,21 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
 
         require(totalReward > 0, "Pool Factory: reward token amount is zero");
 
-        VemoFixedStakingPool stakingPool = new VemoFixedStakingPool(params, _voucher, msg.sender);
-
+        PoolProxy proxy = new PoolProxy(impl);
+        IVemoFixedStakingPool(address(proxy)).initialize(params, _voucher, msg.sender);
+        
         IERC20(params.rewardToken).safeTransferFrom(
-            msg.sender, address(stakingPool), totalReward
+            msg.sender, address(proxy), totalReward
         );
 
-        _poolByHash[poolHash] = address(stakingPool);
+        _poolByHash[poolHash] = address(proxy);
 
         emit FixedStakingPoolCreated(
-            address(stakingPool),
+            address(proxy),
             msg.sender
         );
 
-        return address(stakingPool);
+        return address(proxy);
     }
 
     function _authorizeUpgrade(address newImplementation) internal view override {
@@ -192,8 +194,18 @@ contract VemoPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         _onlyOwner();
     }
 
+    function version() public pure returns (string memory) {
+        return "0.4";
+    }
+
+    function setImplManager(address manager) public onlyOwner {
+        _guardian = IPoolImplManager(manager);
+    }
+
     event FixedStakingPoolCreated(
         address indexed pool,
         address owner
     );
+
+    IPoolImplManager _guardian;
 }

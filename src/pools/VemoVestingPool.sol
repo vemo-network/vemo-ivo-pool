@@ -9,9 +9,9 @@ import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
 import "../interfaces/VestingPool.sol";
 import "../interfaces/IVoucherFactory.sol";
+import "../interfaces/IVemoPool.sol";
 
-// @title Moonsoon VestingPool
-contract VemoVestingPool is IERC721Receiver {
+contract VemoVestingPool is IERC721Receiver, IVemoPool {
     using SafeERC20 for IERC20;
 
     using MerkleProof for bytes32[];
@@ -483,5 +483,17 @@ contract VemoVestingPool is IERC721Receiver {
         bytes calldata data
     ) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function token0() external view returns (address) {
+        return _token0;
+    }
+    
+    function token1() external view returns (address) {
+        return _token1;
+    }
+
+    function version() public pure override returns (string memory) {
+        return "0.2";
     }
 }

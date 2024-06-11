@@ -50,9 +50,12 @@ interface IVemoFixedStakingPool {
         uint256 _newAllocation
     );
 
+    function initialize(FixedStakingPool memory vestingPool, address _voucherFactory, address _operator) external;
+    
     function staked(uint8 periodIndex, address staker) external returns (uint256);
 
     function adjustAllocation(uint8 periodIndex, uint256 newAllo) external;
 
     function reward(uint256 amount, uint8 periodIndex) external returns (uint256);
+    
 }
