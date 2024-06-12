@@ -71,6 +71,8 @@ $ anvil
 
 ```shell
 $ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+
+forge clean && forge build && forge script script/VemoVestingPoolFactoryUpgrade.s.sol  --rpc-url https://avalanche-fuji-c-chain-rpc.publicnode.com  --verifier-url 'https://api.routescan.io/v2/network/mainnet/evm/43113/etherscan' --etherscan-api-key  "1VYRT81XHNBY8BC2X88N9ZF4XRBXUJDYKQ" --ffi --broadcast
 ```
 
 ### 
