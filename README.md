@@ -24,6 +24,9 @@ avax testnet
 | Voucher Factory Proxy | 0x65B903D7903d277bE600B8524a759aBEa3CC7e1A |
 | VoucherFactory Imp | 0x8b8950E6efb667895B60827c6c121358A02B77FD |
 | Vemo Vesting Factory | 0x5ef5D34bcbCefdFa6442aD7672a4147A98C08698 |
+| PoolImplManager | 0x2ADCeA67791c01a0264BF2A0d396a432acd18567 |
+| PoolImplManager Proxy | 0x5c98e85e7FCC7998A5071092aafa4C2ae093338d |
+| VemoFixedStakingPool | 0x94f79aFA223ba6E7647F3d5D3f67E85108f71dE5 |
 
 -------------------------------------------------------
 Deployment on bnb testnet

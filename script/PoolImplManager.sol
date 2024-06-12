@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console2} from "forge-std/Script.sol";
 import "../src/PoolImplManager.sol";
+import "../src/pools/VemoFixedStakingPool.sol";
 import "../src/VemoPoolFactory.sol";
 import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -21,8 +22,12 @@ contract PoolImplManagerScript is Script {
             "PoolImplManager.sol",
             abi.encodeCall(PoolImplManager.initialize, (deployer))
         );
+
         VemoPoolFactory factory = VemoPoolFactory(payable(poolFactory));
         factory.setImplManager(implManager);
+
+        VemoFixedStakingPool stakingImpl = new VemoFixedStakingPool();
+        PoolImplManager(implManager).addImpl(address(stakingImpl));
         vm.stopBroadcast();
     }
 }
