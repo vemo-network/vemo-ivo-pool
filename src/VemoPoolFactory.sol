@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
-import {VemoVestingPool} from "./pools/VemoVestingPool.sol";
 import "./pools/AutoURIVestingPool.sol";
 import "./interfaces/IVemoFixedStakingPool.sol";
 import "./interfaces/IVemoFixedStakingPool.sol";
@@ -86,71 +85,6 @@ contract VemoPoolFactory is UUPSUpgradeable {
    */
     function getPoolByHash(bytes32 hash) external view returns (address) {
         return _poolByHash[hash];
-    }
-
-    /**
-     * @dev publish a vesting pool
-     * @param params - see {CreateVestingPoolParams}
-     * @notice The function first validate the signature of the whole params, which should be signed
-     * using the moonsoon operator address.
-     *
-     * - A new {Voucher} is deployed by sending `voucherData` params to {VoucherFactory} address
-     * - {VemoVestingPool.sol.VestingPool} from `params` will be sent to {VemoVestingPool.sol}
-     *   to create a new VemoVestingPool.sol
-     * - The Factory will take the `token0Amount` of `token0` from sender, and send them to the new
-     *   created vesting pool
-     *
-     * @return vestingPool - address of the deployed vesting pool
-    */
-    function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
-        require(params.token0 != address(0x0), 'token0 should not be zero');
-        require(params.token0Amount >= params.maxAllocationPerWallet, 'token0Amount should be greater than maxAllocationPerWallet');
-
-        bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.token0, params.token1));
-        require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
-
-        // Create a new vesting pool
-        VemoVestingPool.VestingPool memory _pool = VemoVestingPool.VestingPool(
-            params.token0,
-            params.token0Amount,
-            params.token1,
-            params.expectedToken1Amount,
-            params.poolType,
-            params.flexibleAllocation,
-            params.maxAllocationPerWallet,
-            params.royaltyRate,
-            params.startAt,
-            params.endAt,
-            _voucher,
-            params.baseUrl,
-            params.root,
-            params.schedules,
-            params.fee
-        );
-        VemoVestingPool vestingPool = new VemoVestingPool(_pool, msg.sender);
-
-        IERC20(params.token0).safeTransferFrom(
-            msg.sender, address(this), params.token0Amount
-        );
-
-        IERC20(params.token0).safeTransfer(
-            address(vestingPool), params.token0Amount
-        );
-
-        _poolByHash[poolHash] = address(vestingPool);
-
-        emit VestingPoolCreated(
-            msg.sender,
-            address(vestingPool),
-            params.poolId,
-            poolHash,
-            params.token0,
-            params.token1,
-            params.token0Amount,
-            params.expectedToken1Amount
-        );
-
-        return payable(address(vestingPool));
     }
 
     /**
