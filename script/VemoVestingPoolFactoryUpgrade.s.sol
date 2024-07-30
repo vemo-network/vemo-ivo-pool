@@ -13,7 +13,7 @@ contract PoolFactoryUpgradeScript is Script {
        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
        address proxyAddress = vm.envAddress("POOL_FACTORY");
 
-       vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
         VemoPoolFactory proxy = VemoPoolFactory(payable(proxyAddress));
         VemoPoolFactory newImplementation = new VemoPoolFactory();
 
