@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-interface IVoucher {
+interface IVoucherFactory {
     // data schemas
-
     struct VestingSchedule {
         uint256 amount;
         uint8 vestingType; // linear: 1 | staged: 2
@@ -34,9 +33,22 @@ interface IVoucher {
         string[] tokenUri;
     }
 
+    function createFor(
+        address tokenAddress,
+        Vesting memory vesting,
+        address receiver
+    ) external returns (address, uint256);
+
     function createBatch(
         address tokenAddress,
         BatchVesting memory batch,
         uint96 royaltyRate
+    ) external returns (address, uint256, uint256);
+
+    function createBatchFor(
+        address tokenAddress,
+        BatchVesting memory batch,
+        uint96 royaltyRate,
+        address receiver
     ) external returns (address, uint256, uint256);
 }

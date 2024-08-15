@@ -4,12 +4,12 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin-contracts/utils/Strings.sol";
 import "../src/interfaces/VestingPool.sol";
-import "../src/VemoVestingPool.sol";
-import "../src/VemoVestingPoolFactory.sol";
+import "../src/pools/AutoURIVestingPool.sol";
+import "../src/VemoPoolFactory.sol";
 import "./TestSetup.t.sol";
 
-contract VemoVestingPoolTest_NonWhitelist is TestSetup {
-    VemoVestingPoolFactory private factory;
+contract AutoURIVestingPoolTest_NonWhitelist is TestSetup {
+    VemoPoolFactory private factory;
 
     string private constant  baseUrl = "https://test.com";
     string private constant  baseUri = "https://test.com/test.png";
@@ -18,17 +18,17 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         super.setUp();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        factory = new VemoVestingPoolFactory();
-        factory.initialize(vm.addr(deployerPrivateKey), "VemoVestingPoolFactory", "0.1");
+        factory = new VemoPoolFactory();
+        factory.initialize(vm.addr(deployerPrivateKey), "VemoPoolFactory", "0.1");
         factory.setVoucherAddress(address(voucher));
         mockToken.approve(address(factory), UINT256_MAX);
         vm.stopPrank();
 
-        console.log("VemoVestingPoolFactory Address: ", address(factory));
+        console.log("VemoPoolFactory Address: ", address(factory));
     }
 
     function generateParams() private view returns (CreateVestingPoolParams memory params) {
-        IVoucher.VestingSchedule memory vestingSchedule = IVoucher.VestingSchedule(
+        IVoucherFactory.VestingSchedule memory vestingSchedule = IVoucherFactory.VestingSchedule(
             1000000,
             1, // linear: 1 | staged: 2
             1,
@@ -38,10 +38,10 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
             1000000
         );
 
-        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](1);
+        IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](1);
         schedules[0] = vestingSchedule;
 
-        IVoucher.VestingFee memory fee = IVoucher.VestingFee(
+        IVoucherFactory.VestingFee memory fee = IVoucherFactory.VestingFee(
             0,
             address(mockToken1),
             vm.addr(deployerPrivateKey),
@@ -74,14 +74,14 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         CreateVestingPoolParams memory params = generateParams();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
 
         skip(60);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy(1000000);
         vm.stopPrank();
 
         assert(mockToken1.balanceOf(vm.addr(buyerPrivateKey)) == 0);
@@ -93,21 +93,19 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         params.expectedToken1Amount = 100000000000;
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000);
+        assert(AutoURIVestingPool(pool).token1Amount(1000000) == 1000000000);
 
         skip(60);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy{value: AutoURIVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
 
-        assert(Strings.equal(VemoVestingPool(pool).baseUrl(), baseUrl));
-        assert(Strings.equal(string.concat(VemoVestingPool(pool).baseUrl(), "/test.png"), baseUri));
         assert(pool.balance == 1000000000);
     }
 
@@ -116,17 +114,17 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         params.token1 = address(0);
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(AutoURIVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(60);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: 232}(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy{value: 232}(1000000);
         vm.stopPrank();
     }
 
@@ -135,17 +133,17 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         params.token1 = address(0);
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(AutoURIVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(40);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy{value: AutoURIVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
     }
 
@@ -154,17 +152,17 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         params.token1 = address(0);
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
         assert(pool.balance == 0);
-        assert(VemoVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
+        assert(AutoURIVestingPool(pool).token1Amount(1000000) == 1000000000000000000);
 
         skip(125);
 
         vm.deal(vm.addr(buyerPrivateKey), 1000000000000000000);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
-        VemoVestingPool(pool).buy{value: VemoVestingPool(pool).token1Amount(1000000)}(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy{value: AutoURIVestingPool(pool).token1Amount(1000000)}(1000000);
         vm.stopPrank();
     }
 
@@ -172,14 +170,14 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         CreateVestingPoolParams memory params = generateParams();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
 
         skip(70);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(3000000, "/test.png");
+        AutoURIVestingPool(pool).buy(3000000);
         vm.stopPrank();
     }
 
@@ -187,15 +185,15 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         CreateVestingPoolParams memory params = generateParams();
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
 
         skip(70);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000, "/test.png");
-        VemoVestingPool(pool).buy(1100000, "/test.png");
+        AutoURIVestingPool(pool).buy(1000000);
+        AutoURIVestingPool(pool).buy(1100000);
         vm.stopPrank();
     }
 
@@ -204,14 +202,14 @@ contract VemoVestingPoolTest_NonWhitelist is TestSetup {
         params.flexibleAllocation = false;
 
         vm.startPrank(vm.addr(deployerPrivateKey));
-        address payable pool = factory.createVestingPool(params);
+        address payable pool = factory.createAutoURIVestingPool(params);
         vm.stopPrank();
 
         skip(70);
 
         vm.startPrank(vm.addr(buyerPrivateKey));
         mockToken1.approve(pool, UINT256_MAX);
-        VemoVestingPool(pool).buy(1000000, "/test.png");
+        AutoURIVestingPool(pool).buy(1000000);
         vm.stopPrank();
     }
 

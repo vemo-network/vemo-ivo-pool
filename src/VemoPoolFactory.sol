@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin-contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin-contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "./interfaces/VestingPool.sol";
-import {VemoVestingPool} from "./VemoVestingPool.sol";
-import "./VemoVestingPool.sol";
+import "./pools/AutoURIVestingPool.sol";
+import "./interfaces/IVemoFixedStakingPool.sol";
+import "./interfaces/IVemoFixedStakingPool.sol";
+import "./interfaces/IPoolImplManager.sol";
+
+import "./pools/PoolProxy.sol";
+
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
+contract VemoPoolFactory is UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     modifier onlyOwner() {
@@ -50,7 +52,6 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
     );
 
     function initialize(address anOwner, string memory name_, string memory version_) public virtual initializer {
-        __EIP712_init(name_, version_);
         _initialize(anOwner);
     }
 
@@ -100,7 +101,7 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
      *
      * @return vestingPool - address of the deployed vesting pool
     */
-    function createVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
+    function createAutoURIVestingPool(CreateVestingPoolParams calldata params) external payable returns (address payable) {
         require(params.token0 != address(0x0), 'token0 should not be zero');
         require(params.token0Amount >= params.maxAllocationPerWallet, 'token0Amount should be greater than maxAllocationPerWallet');
 
@@ -108,7 +109,7 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         require(_poolByHash[poolHash] == address(0), "Vesting Pool Factory: pool is already deployed.");
 
         // Create a new vesting pool
-        VemoVestingPool.VestingPool memory _pool = VemoVestingPool.VestingPool(
+        AutoURIVestingPool.VestingPool memory _pool = AutoURIVestingPool.VestingPool(
             params.token0,
             params.token0Amount,
             params.token1,
@@ -120,12 +121,11 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
             params.startAt,
             params.endAt,
             _voucher,
-            params.baseUrl,
             params.root,
             params.schedules,
             params.fee
         );
-        VemoVestingPool vestingPool = new VemoVestingPool(_pool, msg.sender);
+        AutoURIVestingPool vestingPool = new AutoURIVestingPool(_pool, msg.sender);
 
         IERC20(params.token0).safeTransferFrom(
             msg.sender, address(this), params.token0Amount
@@ -151,12 +151,60 @@ contract VemoVestingPoolFactory is EIP712Upgradeable, UUPSUpgradeable {
         return payable(address(vestingPool));
     }
 
+    function createFixedStakingPool(address impl, FixedStakingPool calldata params) external returns (address) {
+        require(_guardian.isImplWhitelisted(impl), "nonwhitelisted impl");
+
+        bytes32 poolHash = keccak256(abi.encodePacked(params.poolId, params.principalToken, params.rewardToken));
+        require(params.maxAllocations.length > 0 && params.maxAllocationPerWallets.length == params.maxAllocations.length &&
+                params.stakingPeriods.length == params.maxAllocationPerWallets.length && 
+                params.rewardRates.length == params.stakingPeriods.length, "Pool Factory: malform input");
+        require(_poolByHash[poolHash] == address(0), "Pool Factory: pool is already deployed.");
+        
+        uint256 totalReward = 0;
+        for (uint i = 0; i < params.stakingPeriods.length; i++) {
+            require(params.stakingPeriods[i] > 0);
+            require(params.maxAllocationPerWallets[i] > 0);
+            require(params.maxAllocations[i] > 0);
+            require(params.rewardRates[i] > 0);
+            totalReward += (params.maxAllocations[i] * params.rewardRates[i]) * IERC20Extented(params.rewardToken).decimals() / 1e18 / IERC20Extented(params.principalToken).decimals();
+        }
+
+        require(totalReward > 0, "Pool Factory: reward token amount is zero");
+
+        PoolProxy proxy = new PoolProxy(impl);
+        IVemoFixedStakingPool(address(proxy)).initialize(params, _voucher, msg.sender);
+        
+        IERC20(params.rewardToken).safeTransferFrom(
+            msg.sender, address(proxy), totalReward
+        );
+
+        _poolByHash[poolHash] = address(proxy);
+
+        emit FixedStakingPoolCreated(
+            address(proxy),
+            msg.sender
+        );
+
+        return address(proxy);
+    }
+
     function _authorizeUpgrade(address newImplementation) internal view override {
         (newImplementation);
         _onlyOwner();
     }
 
-    function getToken1(address payable pool, uint256 amount) public returns (uint256) {
-        return VemoVestingPool(pool).token1Amount(amount);
+    function version() public pure returns (string memory) {
+        return "0.4";
     }
+
+    function setImplManager(address manager) public onlyOwner {
+        _guardian = IPoolImplManager(manager);
+    }
+
+    event FixedStakingPoolCreated(
+        address indexed pool,
+        address owner
+    );
+
+    IPoolImplManager _guardian;
 }

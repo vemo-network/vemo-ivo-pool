@@ -7,10 +7,15 @@ import "./helper/TestToken.sol";
 import "./helper/TestVoucherImplementation.sol";
 
 contract TestSetup is Test {
-    uint256 public deployerPrivateKey;
-    uint256 public operatorPrivateKey;
-    uint256 public buyerPrivateKey;
-    uint256 public buyer2PrivateKey;
+    uint256 public deployerPrivateKey = 0x00000000000000000000000000000000000000000000000000000000002f7c57;
+    uint256 public operatorPrivateKey = 0x00000000000000000000000000000000000000000000000000000000002f7c57;
+    uint256 public buyerPrivateKey = 0xB232D;
+    uint256 public buyer2PrivateKey = 0xA262F;
+
+    address public deployerAddress = vm.addr(deployerPrivateKey);
+    address public operatorAddress = vm.addr(operatorPrivateKey);
+    address public buyerAddress = vm.addr(buyerPrivateKey);
+    address public buyer2Address = vm.addr(buyer2PrivateKey);
 
     TestVoucher public voucher;
     TestToken public mockToken;
@@ -21,17 +26,12 @@ contract TestSetup is Test {
     function setUp() public virtual {
         vm.chainId(11155111);
 
-        deployerPrivateKey = 0x00000000000000000000000000000000000000000000000000000000002f7c57;
-        operatorPrivateKey = 0x00000000000000000000000000000000000000000000000000000000002f7c57;
-        buyerPrivateKey = 0xB232D;
-        buyer2PrivateKey = 0xA262F;
-
         mockToken = new TestToken("test", "tst");
-        mockToken.mint(vm.addr(deployerPrivateKey), 100000000);
+        mockToken.mint(deployerAddress, 100000000);
 
         mockToken1 = new TestToken("test1", "TEST1");
-        mockToken1.mint(vm.addr(buyerPrivateKey), 1000000);
-        mockToken1.mint(vm.addr(buyer2PrivateKey), 1000000);
+        mockToken1.mint(buyerAddress, 1000000);
+        mockToken1.mint(buyer2Address, 1000000);
 
         voucher = new TestVoucher("TestVoucher", "TVC");
         generateProof();

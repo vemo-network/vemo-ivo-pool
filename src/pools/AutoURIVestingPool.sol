@@ -7,11 +7,11 @@ import "@openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
-import "./interfaces/VestingPool.sol";
-import "./IVoucher.sol";
+import "../interfaces/VestingPool.sol";
+import "../interfaces/IVoucherFactory.sol";
+import "../interfaces/IVemoPool.sol";
 
-// @title Moonsoon VestingPool
-contract VemoVestingPool is IERC721Receiver {
+contract AutoURIVestingPool is IERC721Receiver, IVemoPool {
     using SafeERC20 for IERC20;
 
     using MerkleProof for bytes32[];
@@ -42,7 +42,7 @@ contract VemoVestingPool is IERC721Receiver {
     address private _voucherAddress;
 
     // Vemo voucher
-    IVoucher private _vemoVoucher;
+    IVoucherFactory private _vemoVoucher;
 
     // Start/end time of the pool
     uint256 private _startTime;
@@ -73,8 +73,8 @@ contract VemoVestingPool is IERC721Receiver {
     uint96 private _royaltyRate;
 
     // Vesting Metadata
-    IVoucher.VestingSchedule[] private _vestingSchedules;
-    IVoucher.VestingFee private _fee;
+    IVoucherFactory.VestingSchedule[] private _vestingSchedules;
+    IVoucherFactory.VestingFee private _fee;
 
     // root
     bytes32 private _root;
@@ -92,16 +92,18 @@ contract VemoVestingPool is IERC721Receiver {
         uint256 startAt;
         uint256 endAt;
         address voucherAddress;
-        string baseUrl;
         bytes32 root;
-        IVoucher.VestingSchedule[] schedules;
-        IVoucher.VestingFee fee;
+        IVoucherFactory.VestingSchedule[] schedules;
+        IVoucherFactory.VestingFee fee;
     }
 
     constructor(VestingPool memory vestingPool, address operator) {
         _operator = operator;
 
-        require(block.timestamp < vestingPool.startAt, "start time is in the pass");
+        require(block.timestamp < vestingPool.startAt, "start time is in the past");
+        require(vestingPool.startAt < vestingPool.endAt, "end time is in the past");
+        require(vestingPool.token0Amount > 0, "principle token amount must be larger than zero");
+        
         require(vestingPool.royaltyRate <= 10000, "royalty rate is too high");
 
         _token0 = vestingPool.token0;
@@ -115,14 +117,13 @@ contract VemoVestingPool is IERC721Receiver {
         _startTime = vestingPool.startAt;
         _endTime = vestingPool.endAt;
         _voucherAddress = vestingPool.voucherAddress;
-        _vemoVoucher = IVoucher(_voucherAddress);
+        _vemoVoucher = IVoucherFactory(_voucherAddress);
         _root = vestingPool.root;
         _fee = vestingPool.fee;
-        _baseUrl = vestingPool.baseUrl;
 
         uint256 scheduleLength = vestingPool.schedules.length;
         for (uint8 i = 0; i < scheduleLength; i++) {
-            IVoucher.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
+            IVoucherFactory.VestingSchedule memory vestingSchedule = vestingPool.schedules[i];
 
             _vestingSchedules.push(vestingSchedule);
         }
@@ -135,6 +136,7 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function claim(address token) external {
         require(msg.sender == _operator, "only operator can claim the funds");
+        require(block.timestamp > _endTime, "only expired pool only");
 
         _doTransferERC20(token, address(this), msg.sender, _getBalance(token, address(this)));
     }
@@ -225,14 +227,14 @@ contract VemoVestingPool is IERC721Receiver {
     /**
      * @dev get vesting schedule
      */
-    function vestingSchedules() external view returns (IVoucher.VestingSchedule[] memory) {
+    function vestingSchedules() external view returns (IVoucherFactory.VestingSchedule[] memory) {
         return _vestingSchedules;
     }
 
     /**
      * @dev get vesting fee
      */
-    function vestingFee() external view returns (IVoucher.VestingFee memory) {
+    function vestingFee() external view returns (IVoucherFactory.VestingFee memory) {
         return _fee;
     }
 
@@ -257,9 +259,8 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param allocation the allocation to the buyer
      * @param proof the proof that buyer is allowed to buy that allocation, verified by merkle proof
-     * @param tokenUri the token uri used for the voucher created.
      */
-    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof, string memory tokenUri) external payable {
+    function buyWhitelist(uint256 amount, uint256 allocation, bytes32[] memory proof) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= allocation, "bought amount exceeds allocation for this wallet");
@@ -274,7 +275,8 @@ contract VemoVestingPool is IERC721Receiver {
         require(MerkleProof.verify(proof, _root, leaf), "wrong proof of whitelist data");
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount, tokenUri);
+
+        _createVoucher(amount, _token1Amount);
 
         emit TokenBought(
             msg.sender,
@@ -290,9 +292,8 @@ contract VemoVestingPool is IERC721Receiver {
      * @notice function to buy in a non whitelist pool
      *          - The buyer should retrieve a voucher which contains locked token
      * @param amount the amount buyer want to buy
-     * @param tokenUri the token uri used for the voucher created.
      */
-    function buy(uint256 amount, string memory tokenUri) external payable {
+    function buy(uint256 amount) external payable {
         require(block.timestamp <= _endTime, "the vesting pool has ended");
         require(block.timestamp >= _startTime, "the vesting pool has not started yet");
         require(_boughtAmount[msg.sender] + amount <= _maxAllocationPerWallet, "bought amount exceeds max allocation.");
@@ -304,7 +305,8 @@ contract VemoVestingPool is IERC721Receiver {
         }
 
         uint256 _token1Amount = _buy(amount);
-        _createVoucher(amount, _token1Amount, tokenUri);
+
+        _createVoucher(amount, _token1Amount);
 
         emit TokenBought(
             msg.sender,
@@ -314,8 +316,6 @@ contract VemoVestingPool is IERC721Receiver {
             amount,
             _token1Amount
         );
-
-        uint256 balance = _getBalance(_token1, address(this));
     }
 
     /**
@@ -326,6 +326,9 @@ contract VemoVestingPool is IERC721Receiver {
      */
     function _buy(uint256 amount) internal returns (uint256){
         uint256 _token1Amount = token1Amount(amount);
+        if (_expectedToken1Amount > 0) {
+            require(_token1Amount > 0, "wrong offer value");
+        }
 
         _doTransferERC20(_token1, msg.sender, address(this), _token1Amount);
 
@@ -341,10 +344,10 @@ contract VemoVestingPool is IERC721Receiver {
      * @param amount the amount buyer want to buy
      * @param amountToken1 the amount buyer needs to pay
      */
-    function _createVoucher(uint256 amount, uint256 amountToken1, string memory tokenUri) private {
+    function _createVoucher(uint256 amount, uint256 amountToken1) private {
         uint256 feeAmount = Math.mulDiv(amount, _fee.totalFee, _token0Amount, Math.Rounding.Floor);
 
-        IVoucher.VestingFee memory voucherFee = IVoucher.VestingFee(
+        IVoucherFactory.VestingFee memory voucherFee = IVoucherFactory.VestingFee(
             _fee.isFee,
             _fee.feeTokenAddress,
             _fee.receiverAddress,
@@ -352,12 +355,12 @@ contract VemoVestingPool is IERC721Receiver {
             0
         );
 
-        IVoucher.VestingSchedule[] memory schedules = new IVoucher.VestingSchedule[](_vestingSchedules.length);
+        IVoucherFactory.VestingSchedule[] memory schedules = new IVoucherFactory.VestingSchedule[](_vestingSchedules.length);
 
         uint256 scheduleLength = _vestingSchedules.length;
         for (uint8 i = 0; i < scheduleLength; i++) {
             uint256 vestingAmount = Math.mulDiv(amount, _vestingSchedules[i].amount, _token0Amount, Math.Rounding.Floor);
-            IVoucher.VestingSchedule memory schedule = IVoucher.VestingSchedule(
+            IVoucherFactory.VestingSchedule memory schedule = IVoucherFactory.VestingSchedule(
                 vestingAmount,
                 _vestingSchedules[i].vestingType,
                 _vestingSchedules[i].linearType,
@@ -370,25 +373,14 @@ contract VemoVestingPool is IERC721Receiver {
             schedules[i] = schedule;
         }
 
-        IVoucher.Vesting memory params = IVoucher.Vesting(
+        IVoucherFactory.Vesting memory params = IVoucherFactory.Vesting(
             amount,
             schedules,
             voucherFee
         );
 
-        string[] memory tokenUris = new string[](1);
-        tokenUris[0] = string.concat(_baseUrl, tokenUri);
-        IVoucher.BatchVesting memory batchVesting = IVoucher.BatchVesting(
-            params,
-            1,
-            tokenUris
-        );
-
         IERC20(_token0).approve(address(_vemoVoucher), amount);
-        (address voucher, uint256 startId, uint256 endId) = _vemoVoucher.createBatch(_token0, batchVesting, _royaltyRate);
-
-        for (uint256 i = startId; i <= endId; i++)
-            ERC721(voucher).transferFrom(address(this), msg.sender, i);
+        _vemoVoucher.createFor(_token0, params, msg.sender);
     }
 
     /**
@@ -478,5 +470,17 @@ contract VemoVestingPool is IERC721Receiver {
         bytes calldata data
     ) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function token0() external view returns (address) {
+        return _token0;
+    }
+    
+    function token1() external view returns (address) {
+        return _token1;
+    }
+
+    function version() public pure override returns (string memory) {
+        return "0.2";
     }
 }
