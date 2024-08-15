@@ -1,7 +1,7 @@
 const ethers = require('ethers');
 
 const provider = new ethers.providers.JsonRpcProvider('https://avalanche.public-rpc.com');
-const signer = new ethers.Wallet("0x9bbc62adcf6aae6f3295e88dc0219f83b3900bc1fb90f458b91404e1381d178e", provider);
+const signer = new ethers.Wallet("", provider);
 
 const VOUCHER_CONTRACT = '0xbB740E17f3c177172CaAcCef2F472DB41b9b1d19';
 const LOCK_TOKEN = "0xf3E0915319b33445AAF9Ea4c6D3c4f7fB2875081";
